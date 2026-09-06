@@ -1,7 +1,6 @@
 package com.jpb.steptrackr.services
 
 import android.app.Service
-import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.hardware.Sensor
@@ -10,6 +9,7 @@ import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import androidx.core.app.NotificationCompat
 import com.jpb.steptrackr.R
+import kotlin.time.Clock
 import kotlin.time.Instant
 
 class NonGmsStepService : Service(), SensorEventListener {
@@ -18,7 +18,7 @@ class NonGmsStepService : Service(), SensorEventListener {
 
     override fun onCreate() {
         super.onCreate()
-        sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
+        sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager
         val stepSensor = sensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER)
 
         // Android requires a persistent notification for foreground services
@@ -38,9 +38,9 @@ class NonGmsStepService : Service(), SensorEventListener {
         if (event?.sensor?.type == Sensor.TYPE_STEP_COUNTER) {
             val totalStepsSinceBoot = event.values[0].toLong()
 
-            if (lastSavedSteps > 0 && totalStepsSinceBoot > lastSavedSteps) {
+            if (lastSavedSteps in 1..<totalStepsSinceBoot) {
                 val delta = totalStepsSinceBoot - lastSavedSteps
-                saveStepsToLocalDatabase(delta, Instant.now())
+                saveStepsToLocalDatabase(delta, Clock.System.now())
             }
             lastSavedSteps = totalStepsSinceBoot
         }
