@@ -57,7 +57,6 @@ class MainActivity : ComponentActivity() {
 fun PermissionAndDashboardScreen() {
     val context = LocalContext.current
 
-    // CRITICAL FIX: Pass the base Activity instance context for handling the Health Connect UI window
     val activityContext = remember(context) { context as Activity }
     val db = remember { StepDatabase.getDatabase(context.applicationContext) }
     val healthConnectClient = remember { HealthConnectClient.getOrCreate(activityContext) }
@@ -78,6 +77,18 @@ fun PermissionAndDashboardScreen() {
 
     val requiredHealthPermissions = remember { setOf(HealthPermission.getWritePermission(StepsRecord::class)) }
 
+    fun startTrackingService() {
+        if (hasActivityPermission && hasNotificationPermission) {
+            try {
+                val serviceIntent = Intent(context.applicationContext, com.jpb.steptrackr.services.NonGmsStepService::class.java)
+                ContextCompat.startForegroundService(context.applicationContext, serviceIntent)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    // Health Connect Specific Permission Contract Launcher
     val healthPermissionLauncher = rememberLauncherForActivityResult(
         contract = PermissionController.createRequestPermissionResultContract()
     ) { grantedPermissions ->
@@ -87,18 +98,12 @@ fun PermissionAndDashboardScreen() {
     val systemPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
-        hasActivityPermission = permissions[Manifest.permission.ACTIVITY_RECOGNITION] ?: hasActivityPermission
-        hasNotificationPermission = permissions[Manifest.permission.POST_NOTIFICATIONS] ?: hasNotificationPermission
-    }
+        // Enforces dynamic UI visibility updates instantly upon granting
+        hasActivityPermission = permissions[Manifest.permission.ACTIVITY_RECOGNITION] == true
+        hasNotificationPermission = permissions[Manifest.permission.POST_NOTIFICATIONS] == true
 
-    fun startTrackingService() {
-        if (hasActivityPermission) {
-            try {
-                val serviceIntent = Intent(context.applicationContext, com.jpb.steptrackr.services.NonGmsStepService::class.java)
-                ContextCompat.startForegroundService(context.applicationContext, serviceIntent)
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
+        if (hasActivityPermission && hasNotificationPermission) {
+            startTrackingService()
         }
     }
 
@@ -115,28 +120,85 @@ fun PermissionAndDashboardScreen() {
         }
     }
 
-    // Refresh configurations natively on initial screen layout load
-    LaunchedEffect(hasActivityPermission) {
+    LaunchedEffect(hasActivityPermission, hasNotificationPermission) {
         val granted = healthConnectClient.permissionController.getGrantedPermissions()
         hasHealthPermission = granted.containsAll(requiredHealthPermissions)
-        if (hasActivityPermission) {
+        if (hasActivityPermission && hasNotificationPermission) {
             startTrackingService()
         }
     }
 
     Column(
-        modifier = Modifier.fillMaxSize().padding(24.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.spacedBy(24.dp, Alignment.CenterVertically)
     ) {
+        // 1. Material Expressive UI Gauge Component
         Material3ExpressiveStepGauge(currentSteps = todaySteps, stepGoal = stepGoal)
 
-        Spacer(modifier = Modifier.height(32.dp))
+        // 2. Health Connect In-App Settings Management Card [1]
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            )
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "Health Connect Integration",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
 
-        // FIX 3: Conditional Visibility - Button layouts disappear completely upon verification clearance
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = if (hasHealthPermission) {
+                        "Your step data is securely syncing automatically with Android's system health storage registry."
+                    } else {
+                        "Connect this app with Health Connect to share your daily progress safely with your other fitness tracking utilities."
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                if (!hasHealthPermission) {
+                    // Explicit assignment button to trigger full screen health prompt [1]
+                    Button(
+                        onClick = { healthPermissionLauncher.launch(requiredHealthPermissions) },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Link Health Connect")
+                    }
+                } else {
+                    // Sync execution control visibility toggle
+                    Button(
+                        onClick = { triggerImmediateSync() },
+                        enabled = !isSyncing,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(if (isSyncing) "Syncing Logs..." else "Sync Data Now")
+                    }
+                }
+            }
+        }
+
+        // 3. Hardware System Permissions Conditional block.
+        // It disappears completely from view the exact millisecond both requirements hit true. [1]
         if (!hasActivityPermission || !hasNotificationPermission) {
-            Text("Tracking requires step and notification access.", style = MaterialTheme.typography.bodyMedium)
-            Spacer(modifier = Modifier.height(16.dp))
             Button(
                 onClick = {
                     val channel = NotificationChannel("non_gms_activity_tracking_channel", "Activity Tracking", NotificationManager.IMPORTANCE_MIN)
@@ -144,26 +206,18 @@ fun PermissionAndDashboardScreen() {
                     manager.createNotificationChannel(channel)
 
                     systemPermissionLauncher.launch(arrayOf(Manifest.permission.ACTIVITY_RECOGNITION, Manifest.permission.POST_NOTIFICATIONS))
-                }
+                },
+                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
             ) {
-                Text("Grant System Permissions")
-            }
-        } else if (!hasHealthPermission) {
-            Text("App needs permission to store data into Health Connect.", style = MaterialTheme.typography.bodyMedium)
-            Spacer(modifier = Modifier.height(16.dp))
-            Button(onClick = { healthPermissionLauncher.launch(requiredHealthPermissions) }) {
-                Text("Grant Health Connect Access")
+                Text("Missing Core Hardware Permissions (Fix Access)")
             }
         } else {
-            // All cleared state: Show only status information and the immediate sync trigger
-            Text("✓ Step tracking & syncing fully active", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-            Spacer(modifier = Modifier.height(16.dp))
-            Button(
-                onClick = { triggerImmediateSync() },
-                enabled = !isSyncing
-            ) {
-                Text(if (isSyncing) "Syncing..." else "Sync Data to Health Connect")
-            }
+            // Displays helpful operational confirmation if buttons are hidden [1]
+            Text(
+                text = "✓ Pedometer monitoring active in background",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary
+            )
         }
     }
 }
@@ -187,16 +241,8 @@ fun Material3ExpressiveStepGauge(currentSteps: Long, stepGoal: Long, modifier: M
             val radius = (size.minDimension - strokeWidth) / 2
             val center = Offset(size.width / 2, size.height / 2)
 
-            drawArc(
-                color = trackColor, startAngle = 120f, sweepAngle = 300f, useCenter = false,
-                topLeft = Offset(center.x - radius, center.y - radius), size = Size(radius * 2, radius * 2),
-                style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
-            )
-            drawArc(
-                color = progressColor, startAngle = 120f, sweepAngle = 300f * animatedProgress, useCenter = false,
-                topLeft = Offset(center.x - radius, center.y - radius), size = Size(radius * 2, radius * 2),
-                style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
-            )
+            drawArc(color = trackColor, startAngle = 120f, sweepAngle = 300f, useCenter = false, topLeft = Offset(center.x - radius, center.y - radius), size = Size(radius * 2, radius * 2), style = Stroke(width = strokeWidth, cap = StrokeCap.Round))
+            drawArc(color = progressColor, startAngle = 120f, sweepAngle = 300f * animatedProgress, useCenter = false, topLeft = Offset(center.x - radius, center.y - radius), size = Size(radius * 2, radius * 2), style = Stroke(width = strokeWidth, cap = StrokeCap.Round))
         }
 
         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(top = 12.dp)) {
