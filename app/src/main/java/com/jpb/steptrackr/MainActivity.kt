@@ -39,6 +39,9 @@ import java.time.ZoneId
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Intent
+import androidx.compose.foundation.layout.width
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -74,12 +77,12 @@ fun PermissionAndDashboardScreen() {
         mutableStateOf(checkPermission(appContext, Manifest.permission.ACTIVITY_RECOGNITION))
     }
     var hasNotificationPermission by remember {
-        mutableStateOf(
-            checkPermission(appContext, Manifest.permission.POST_NOTIFICATIONS)
-        )
+        mutableStateOf(checkPermission(appContext, Manifest.permission.POST_NOTIFICATIONS))
     }
 
-    // Helper function to safely spin up the background step tracking engine
+    // Keep track of the active sync status to show progress indicators
+    var isSyncing by remember { mutableStateOf(false) }
+
     fun startTrackingService() {
         if (hasActivityPermission) {
             try {
@@ -91,19 +94,33 @@ fun PermissionAndDashboardScreen() {
         }
     }
 
+    // Function to force an immediate sync transaction to Health Connect
+    fun triggerImmediateSync() {
+        isSyncing = true
+        val syncWorkRequest = OneTimeWorkRequestBuilder<com.jpb.steptrackr.services.HealthSyncWorker>().build()
+
+        val workManager = WorkManager.getInstance(appContext)
+        workManager.enqueue(syncWorkRequest)
+
+        // Observe the status of the sync worker in real-time
+        workManager.getWorkInfoByIdLiveData(syncWorkRequest.id).observeForever { workInfo ->
+            if (workInfo != null && workInfo.state.isFinished) {
+                isSyncing = false
+            }
+        }
+    }
+
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
         hasActivityPermission = permissions[Manifest.permission.ACTIVITY_RECOGNITION] ?: hasActivityPermission
         hasNotificationPermission = permissions[Manifest.permission.POST_NOTIFICATIONS] ?: hasNotificationPermission
 
-        // Start tracking immediately if the user just approved the dialogs
         if (hasActivityPermission) {
             startTrackingService()
         }
     }
 
-    // Automatically attempt to start tracking on view load if permissions are already cleared
     LaunchedEffect(hasActivityPermission) {
         if (hasActivityPermission) {
             startTrackingService()
@@ -128,18 +145,20 @@ fun PermissionAndDashboardScreen() {
             Spacer(modifier = Modifier.height(16.dp))
             Button(
                 onClick = {
-                    // CRITICAL FIX: Build the channel right now so the OS allows the notification dialog to display
                     val channel = NotificationChannel(
-                        "non_gms_activity_tracking_channel", // Must match your service CHANNEL_ID exactly
+                        "non_gms_activity_tracking_channel",
                         "Activity Tracking",
                         NotificationManager.IMPORTANCE_MIN
                     )
                     val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
                     manager.createNotificationChannel(channel)
 
-                    val permissionsToRequest = mutableListOf(Manifest.permission.ACTIVITY_RECOGNITION)
-                    permissionsToRequest.add(Manifest.permission.POST_NOTIFICATIONS)
-                    permissionLauncher.launch(permissionsToRequest.toTypedArray())
+                    permissionLauncher.launch(
+                        arrayOf(
+                            Manifest.permission.ACTIVITY_RECOGNITION,
+                            Manifest.permission.POST_NOTIFICATIONS
+                        )
+                    )
                 }
             ) {
                 Text("Grant Permissions")
@@ -150,6 +169,30 @@ fun PermissionAndDashboardScreen() {
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.primary
             )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Material 3 Expressive layout Action row for forcing data syncs
+            Button(
+                onClick = { triggerImmediateSync() },
+                enabled = !isSyncing,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+            ) {
+                if (isSyncing) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(18.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Syncing...")
+                } else {
+                    Text("Sync Data to Health Connect")
+                }
+            }
         }
     }
 }
