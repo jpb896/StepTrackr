@@ -2,6 +2,7 @@ package com.jpb.steptrackr.utils
 
 import android.content.Context
 import androidx.room.*
+import kotlinx.coroutines.flow.Flow
 
 @Entity(tableName = "step_deltas")
 data class StepDelta(
@@ -36,6 +37,9 @@ interface StepDao {
 
     @Query("SELECT SUM(delta) FROM step_deltas WHERE timestamp >= :startOfDay")
     suspend fun getTodayLocalSteps(startOfDay: Long): Long?
+
+    @Query("SELECT SUM(delta) FROM step_deltas WHERE timestamp >= :startOfDay")
+    fun getTodayLocalStepsFlow(startOfDay: Long): Flow<Long?> // Removed "suspend", added Flow wrapper
 }
 
 @Database(entities = [StepDelta::class, SensorMetadata::class], version = 1, exportSchema = false)
