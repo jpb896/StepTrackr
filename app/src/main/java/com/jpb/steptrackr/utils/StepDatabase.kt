@@ -39,7 +39,7 @@ interface StepDao {
     suspend fun getTodayLocalSteps(startOfDay: Long): Long?
 
     @Query("SELECT SUM(delta) FROM step_deltas WHERE timestamp >= :startOfDay")
-    fun getTodayLocalStepsFlow(startOfDay: Long): Flow<Long?> // Removed "suspend", added Flow wrapper
+    fun getTodayLocalStepsFlow(startOfDay: Long): Flow<Long?>
 }
 
 @Database(entities = [StepDelta::class, SensorMetadata::class], version = 1, exportSchema = false)

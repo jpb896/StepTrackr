@@ -1,8 +1,13 @@
 package com.jpb.steptrackr
 
+import android.Manifest
 import android.annotation.SuppressLint
+import android.content.Context
+import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.setContent
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -23,13 +28,17 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import com.jpb.steptrackr.utils.StepDatabase
-import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.ZoneId
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.content.Intent
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -37,27 +46,110 @@ class MainActivity : ComponentActivity() {
         setContent {
             MaterialTheme {
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                    var todaySteps by remember { mutableLongStateOf(4230L) }
-                    val stepGoal = 10000L
-
-                    // Read local cache to populate current steps on launch
-                    val db = StepDatabase.getDatabase(this)
-                    LaunchedEffect(Unit) {
-                        launch {
-                            val startOfDay = LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
-                            todaySteps = db.stepDao().getTodayLocalSteps(startOfDay) ?: 0L
-                        }
-                    }
-
-                    Column(
-                        modifier = Modifier.fillMaxSize(),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        Material3ExpressiveStepGauge(currentSteps = todaySteps, stepGoal = stepGoal)
-                    }
+                    PermissionAndDashboardScreen()
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun PermissionAndDashboardScreen() {
+    val context = LocalContext.current
+    val appContext = context.applicationContext
+    val db = remember { StepDatabase.getDatabase(appContext) }
+
+    val startOfDay = remember {
+        LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+    }
+
+    val todayStepsState by db.stepDao()
+        .getTodayLocalStepsFlow(startOfDay)
+        .collectAsState(initial = 0L)
+
+    val todaySteps = todayStepsState ?: 0L
+    val stepGoal = 10000L
+
+    var hasActivityPermission by remember {
+        mutableStateOf(checkPermission(appContext, Manifest.permission.ACTIVITY_RECOGNITION))
+    }
+    var hasNotificationPermission by remember {
+        mutableStateOf(
+            checkPermission(appContext, Manifest.permission.POST_NOTIFICATIONS)
+        )
+    }
+
+    // Helper function to safely spin up the background step tracking engine
+    fun startTrackingService() {
+        if (hasActivityPermission) {
+            try {
+                val serviceIntent = Intent(appContext, com.jpb.steptrackr.services.NonGmsStepService::class.java)
+                ContextCompat.startForegroundService(appContext, serviceIntent)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        hasActivityPermission = permissions[Manifest.permission.ACTIVITY_RECOGNITION] ?: hasActivityPermission
+        hasNotificationPermission = permissions[Manifest.permission.POST_NOTIFICATIONS] ?: hasNotificationPermission
+
+        // Start tracking immediately if the user just approved the dialogs
+        if (hasActivityPermission) {
+            startTrackingService()
+        }
+    }
+
+    // Automatically attempt to start tracking on view load if permissions are already cleared
+    LaunchedEffect(hasActivityPermission) {
+        if (hasActivityPermission) {
+            startTrackingService()
+        }
+    }
+
+    Column(
+        modifier = Modifier.fillMaxSize().padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Material3ExpressiveStepGauge(currentSteps = todaySteps, stepGoal = stepGoal)
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        if (!hasActivityPermission || !hasNotificationPermission) {
+            Text(
+                text = "Tracking requires step and notification access.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Button(
+                onClick = {
+                    // CRITICAL FIX: Build the channel right now so the OS allows the notification dialog to display
+                    val channel = NotificationChannel(
+                        "non_gms_activity_tracking_channel", // Must match your service CHANNEL_ID exactly
+                        "Activity Tracking",
+                        NotificationManager.IMPORTANCE_MIN
+                    )
+                    val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                    manager.createNotificationChannel(channel)
+
+                    val permissionsToRequest = mutableListOf(Manifest.permission.ACTIVITY_RECOGNITION)
+                    permissionsToRequest.add(Manifest.permission.POST_NOTIFICATIONS)
+                    permissionLauncher.launch(permissionsToRequest.toTypedArray())
+                }
+            ) {
+                Text("Grant Permissions")
+            }
+        } else {
+            Text(
+                text = "✓ Pedometer monitoring active in background",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary
+            )
         }
     }
 }
@@ -139,4 +231,8 @@ fun Material3ExpressiveStepGauge(
             )
         }
     }
+}
+
+private fun checkPermission(context: Context, permission: String): Boolean {
+    return ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
 }
