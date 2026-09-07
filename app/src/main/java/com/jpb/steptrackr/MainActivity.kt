@@ -37,7 +37,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             MaterialTheme {
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                    var todaySteps by remember { mutableStateOf(4230L) }
+                    var todaySteps by remember { mutableLongStateOf(4230L) }
                     val stepGoal = 10000L
 
                     // Read local cache to populate current steps on launch
@@ -52,7 +52,7 @@ class MainActivity : ComponentActivity() {
                     Column(
                         modifier = Modifier.fillMaxSize(),
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center
+                        verticalArrangement = Arrangement.Center
                     ) {
                         Material3ExpressiveStepGauge(currentSteps = todaySteps, stepGoal = stepGoal)
                     }

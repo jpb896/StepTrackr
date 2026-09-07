@@ -61,10 +61,10 @@ class HealthSyncWorker(appContext: Context, params: WorkerParameters) : Coroutin
                 // NON-GMS PATH: Extract from Room Local Cache
                 val unsynced = db.stepDao().getUnsyncedDeltas()
                 if (unsynced.isNotEmpty()) {
-                    for (delta in unsynced) {
-                        val pointTime = Instant.ofEpochMilli(delta.timestamp)
+                    for ((_, delta1, timestamp) in unsynced) {
+                        val pointTime = Instant.ofEpochMilli(timestamp)
                         // Room tracks instantaneous points; create a minimal 1-second record block for validation
-                        stepRecordsToInsert.add(createStepsRecord(delta.delta, pointTime.minusSeconds(1), pointTime))
+                        stepRecordsToInsert.add(createStepsRecord(delta1, pointTime.minusSeconds(1), pointTime))
                     }
                 }
             }
@@ -77,7 +77,7 @@ class HealthSyncWorker(appContext: Context, params: WorkerParameters) : Coroutin
                 }
             }
             Result.success()
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             Result.retry()
         }
     }

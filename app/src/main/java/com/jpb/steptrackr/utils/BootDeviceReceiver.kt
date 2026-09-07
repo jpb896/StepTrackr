@@ -31,7 +31,7 @@ class ServiceLauncherWorker(context: Context, params: WorkerParameters) : Corout
         return try {
             ContextCompat.startForegroundService(applicationContext, serviceIntent)
             Result.success()
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             Result.retry()
         }
     }
