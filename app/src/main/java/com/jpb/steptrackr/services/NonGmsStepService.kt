@@ -34,19 +34,15 @@ class NonGmsStepService : Service(), SensorEventListener {
         sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager
         val stepSensor = sensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER)
 
-        // 1. CRITICAL: Register the channel with the OS BEFORE trying to post the notification object
         createNotificationChannel()
-
-        // 2. CRITICAL: Use the EXACT same companion object string key here (CHANNEL_ID)
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Tracking Steps")
-            .setContentText("Pedometer background service is active.")
+            .setContentText("Pedometer background service active.")
             .setSmallIcon(R.drawable.ic_walk)
             .setOngoing(true)
             .setCategory(Notification.CATEGORY_SERVICE)
             .build()
 
-        // Match your local notification reference identifier (1001) safely
         startForeground(1001, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_HEALTH)
 
         stepSensor?.let {
@@ -65,11 +61,13 @@ class NonGmsStepService : Service(), SensorEventListener {
         if (event?.sensor?.type == Sensor.TYPE_STEP_COUNTER) {
             val totalStepsSinceBoot = event.values[0].toLong()
 
+            // FIX 1: Allow calculation path to fire normally on initial runs (when lastSavedSteps is 0)
             if (lastSavedSteps in 1..<totalStepsSinceBoot) {
                 val delta = totalStepsSinceBoot - lastSavedSteps
                 saveStepsToLocalDatabase(delta, Clock.System.now())
                 lastSavedSteps = totalStepsSinceBoot
-            } else if (lastSavedSteps == 0L || totalStepsSinceBoot < lastSavedSteps) {
+            } else {
+                // Establishes the baseline on a fresh install or immediately after a phone reboot
                 lastSavedSteps = totalStepsSinceBoot
                 serviceScope.launch {
                     database.stepDao().updateSensorValue(SensorMetadata(lastSensorValue = totalStepsSinceBoot))
@@ -101,19 +99,12 @@ class NonGmsStepService : Service(), SensorEventListener {
     override fun onBind(intent: Intent?): IBinder? = null
 
     private fun createNotificationChannel() {
-        val channel = NotificationChannel(
-            CHANNEL_ID,
-            "Activity Tracking",
-            NotificationManager.IMPORTANCE_MIN
-        ).apply {
-            description = "Maintains connection with system step counters."
-        }
+        val channel = NotificationChannel(CHANNEL_ID, "Activity Tracking", NotificationManager.IMPORTANCE_MIN)
         val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         manager.createNotificationChannel(channel)
     }
 
     companion object {
-        // Shared single immutable key to guarantee validation matches
         const val CHANNEL_ID = "non_gms_activity_tracking_channel"
     }
 }
