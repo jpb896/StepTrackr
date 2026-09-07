@@ -81,21 +81,29 @@ class NonGmsStepService : Service(), SensorEventListener {
     }
 
     private fun saveStepsToLocalDatabase(delta: Long, timestamp: Instant) {
-        // Dispatch database insertions to the background thread IO pool securely
         serviceScope.launch {
-            // 1. Insert the step increment fragment row
-            database.stepDao().insertDelta(
-                StepDelta(
+            try {
+                // Convert kotlinx.datetime.Instant directly to raw epoch milliseconds for Room storage
+                val epochMillis = timestamp.toEpochMilliseconds()
+
+                // Inserts the newly generated step increment fragment line into the local Room table
+                val stepDeltaEntity = StepDelta(
                     delta = delta,
-                    timestamp = timestamp.toEpochMilliseconds(),
+                    timestamp = epochMillis,
                     isSynced = false
                 )
-            )
+                database.stepDao().insertDelta(stepDeltaEntity)
 
-            // 2. Persist the current cumulative step baseline to detect future reboots correctly
-            database.stepDao().updateSensorValue(
-                SensorMetadata(lastSensorValue = lastSavedSteps + delta)
-            )
+                // Persist the updated sensor baseline tracking checkpoint to preserve continuity across restarts
+                val metadataUpdate = SensorMetadata(
+                    lastSensorValue = lastSavedSteps
+                )
+                database.stepDao().updateSensorValue(metadataUpdate)
+
+            } catch (e: Exception) {
+                // Handle unexpected storage failures or write exceptions smoothly
+                e.printStackTrace()
+            }
         }
     }
 
