@@ -36,12 +36,11 @@ import androidx.core.content.ContextCompat
 import com.jpb.steptrackr.utils.StepDatabase
 import java.time.LocalDate
 import java.time.ZoneId
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import android.content.Intent
-import androidx.compose.foundation.layout.width
-import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.WorkManager
+import androidx.health.connect.client.HealthConnectClient
+import androidx.health.connect.client.PermissionController
+import androidx.health.connect.client.permission.HealthPermission
+import androidx.health.connect.client.records.StepsRecord
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -61,27 +60,43 @@ fun PermissionAndDashboardScreen() {
     val context = LocalContext.current
     val appContext = context.applicationContext
     val db = remember { StepDatabase.getDatabase(appContext) }
+    val healthConnectClient = remember { HealthConnectClient.getOrCreate(appContext) }
 
     val startOfDay = remember {
         LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
     }
 
-    val todayStepsState by db.stepDao()
-        .getTodayLocalStepsFlow(startOfDay)
-        .collectAsState(initial = 0L)
-
+    val todayStepsState by db.stepDao().getTodayLocalStepsFlow(startOfDay).collectAsState(initial = 0L)
     val todaySteps = todayStepsState ?: 0L
     val stepGoal = 10000L
 
-    var hasActivityPermission by remember {
-        mutableStateOf(checkPermission(appContext, Manifest.permission.ACTIVITY_RECOGNITION))
-    }
-    var hasNotificationPermission by remember {
-        mutableStateOf(checkPermission(appContext, Manifest.permission.POST_NOTIFICATIONS))
+    // Standard OS System Permissions States
+    var hasActivityPermission by remember { mutableStateOf(checkPermission(appContext, Manifest.permission.ACTIVITY_RECOGNITION)) }
+    var hasNotificationPermission by remember { mutableStateOf(checkPermission(appContext, Manifest.permission.POST_NOTIFICATIONS)) }
+
+    // NEW: Health Connect Specific Permission State
+    var hasHealthPermission by remember { mutableStateOf(false) }
+    var isSyncing by remember { mutableStateOf(false) }
+
+    // Define the structural Health permission required for the sync worker
+    val requiredHealthPermissions = remember {
+        setOf(HealthPermission.getWritePermission(StepsRecord::class))
     }
 
-    // Keep track of the active sync status to show progress indicators
-    var isSyncing by remember { mutableStateOf(false) }
+    // 1. Health Connect Custom Permission Request Contract Launcher
+    val healthPermissionLauncher = rememberLauncherForActivityResult(
+        contract = PermissionController.createRequestPermissionResultContract()
+    ) { grantedPermissions ->
+        hasHealthPermission = grantedPermissions.containsAll(requiredHealthPermissions)
+    }
+
+    // 2. Standard System Permissions Launcher
+    val systemPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        hasActivityPermission = permissions[Manifest.permission.ACTIVITY_RECOGNITION] ?: hasActivityPermission
+        hasNotificationPermission = permissions[Manifest.permission.POST_NOTIFICATIONS] ?: hasNotificationPermission
+    }
 
     fun startTrackingService() {
         if (hasActivityPermission) {
@@ -94,15 +109,12 @@ fun PermissionAndDashboardScreen() {
         }
     }
 
-    // Function to force an immediate sync transaction to Health Connect
     fun triggerImmediateSync() {
         isSyncing = true
-        val syncWorkRequest = OneTimeWorkRequestBuilder<com.jpb.steptrackr.services.HealthSyncWorker>().build()
-
-        val workManager = WorkManager.getInstance(appContext)
+        val syncWorkRequest = androidx.work.OneTimeWorkRequestBuilder<com.jpb.steptrackr.services.HealthSyncWorker>().build()
+        val workManager = androidx.work.WorkManager.getInstance(appContext)
         workManager.enqueue(syncWorkRequest)
 
-        // Observe the status of the sync worker in real-time
         workManager.getWorkInfoByIdLiveData(syncWorkRequest.id).observeForever { workInfo ->
             if (workInfo != null && workInfo.state.isFinished) {
                 isSyncing = false
@@ -110,18 +122,10 @@ fun PermissionAndDashboardScreen() {
         }
     }
 
-    val permissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
-        hasActivityPermission = permissions[Manifest.permission.ACTIVITY_RECOGNITION] ?: hasActivityPermission
-        hasNotificationPermission = permissions[Manifest.permission.POST_NOTIFICATIONS] ?: hasNotificationPermission
-
-        if (hasActivityPermission) {
-            startTrackingService()
-        }
-    }
-
-    LaunchedEffect(hasActivityPermission) {
+    // Check existing Health Connect permissions dynamically on view load
+    LaunchedEffect(Unit) {
+        val granted = healthConnectClient.permissionController.getGrantedPermissions()
+        hasHealthPermission = granted.containsAll(requiredHealthPermissions)
         if (hasActivityPermission) {
             startTrackingService()
         }
@@ -136,62 +140,44 @@ fun PermissionAndDashboardScreen() {
 
         Spacer(modifier = Modifier.height(32.dp))
 
+        // Check Phase A: Standard Hardware Pedometer & Notification Access
         if (!hasActivityPermission || !hasNotificationPermission) {
-            Text(
-                text = "Tracking requires step and notification access.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Text("Tracking requires step and notification access.", style = MaterialTheme.typography.bodyMedium)
             Spacer(modifier = Modifier.height(16.dp))
             Button(
                 onClick = {
-                    val channel = NotificationChannel(
-                        "non_gms_activity_tracking_channel",
-                        "Activity Tracking",
-                        NotificationManager.IMPORTANCE_MIN
-                    )
-                    val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                    val channel = android.app.NotificationChannel("non_gms_activity_tracking_channel", "Activity Tracking", android.app.NotificationManager.IMPORTANCE_MIN)
+                    val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
                     manager.createNotificationChannel(channel)
 
-                    permissionLauncher.launch(
-                        arrayOf(
-                            Manifest.permission.ACTIVITY_RECOGNITION,
-                            Manifest.permission.POST_NOTIFICATIONS
-                        )
-                    )
+                    systemPermissionLauncher.launch(arrayOf(Manifest.permission.ACTIVITY_RECOGNITION, Manifest.permission.POST_NOTIFICATIONS))
                 }
             ) {
-                Text("Grant Permissions")
+                Text("Grant System Permissions")
             }
-        } else {
-            Text(
-                text = "✓ Pedometer monitoring active in background",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary
-            )
-
+        }
+        // Check Phase B: Health Connect Storage Writing Integration Access
+        else if (!hasHealthPermission) {
+            Text("App needs permission to store data into Health Connect.", style = MaterialTheme.typography.bodyMedium)
             Spacer(modifier = Modifier.height(16.dp))
-
-            // Material 3 Expressive layout Action row for forcing data syncs
+            Button(
+                onClick = {
+                    // Fires the dedicated full-screen Health Connect system authorization sheet
+                    healthPermissionLauncher.launch(requiredHealthPermissions)
+                }
+            ) {
+                Text("Grant Health Connect Access")
+            }
+        }
+        // All Permissions are Cleared
+        else {
+            Text("✓ Step tracking & syncing fully active", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+            Spacer(modifier = Modifier.height(16.dp))
             Button(
                 onClick = { triggerImmediateSync() },
-                enabled = !isSyncing,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                )
+                enabled = !isSyncing
             ) {
-                if (isSyncing) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(18.dp),
-                        strokeWidth = 2.dp,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Syncing...")
-                } else {
-                    Text("Sync Data to Health Connect")
-                }
+                Text(if (isSyncing) "Syncing..." else "Sync Data to Health Connect")
             }
         }
     }
