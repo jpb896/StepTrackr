@@ -40,6 +40,7 @@ import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.records.StepsRecord
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
+import com.jpb.steptrackr.ui.theme.AppTheme
 import com.jpb.steptrackr.utils.SensorMetadata
 import com.jpb.steptrackr.utils.StepDatabase
 import com.jpb.steptrackr.utils.StepDelta
@@ -65,7 +66,7 @@ class MainActivity : ComponentActivity(), SensorEventListener {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         database = StepDatabase.getDatabase(applicationContext)
-        sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
+        sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager
         stepSensor = sensorManager?.getDefaultSensor(Sensor.TYPE_STEP_COUNTER)
 
         activityScope.launch {
@@ -76,7 +77,7 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         }
 
         setContent {
-            MaterialTheme {
+            AppTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
@@ -317,7 +318,7 @@ fun PermissionAndDashboardScreen(
             }
         } else {
             Text(
-                text = "✓ Pedometer monitoring active",
+                text = "Pedometer monitoring active",
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.primary
             )
