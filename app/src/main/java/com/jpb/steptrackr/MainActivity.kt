@@ -8,11 +8,15 @@ import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
@@ -36,95 +40,200 @@ import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.records.StepsRecord
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
+import com.jpb.steptrackr.utils.SensorMetadata
 import com.jpb.steptrackr.utils.StepDatabase
+import com.jpb.steptrackr.utils.StepDelta
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.ZoneId
+import kotlin.time.Clock
 
-class MainActivity : ComponentActivity() {
+class MainActivity : ComponentActivity(), SensorEventListener {
+
+    private var sensorManager: SensorManager? = null
+    private var stepSensor: Sensor? = null
+    private var lastSavedSteps = 0L
+    private lateinit var database: StepDatabase
+    private val activityScope = CoroutineScope(Dispatchers.IO)
+
+    // Observable Compose state
+    private var isActivityPermissionGranted = mutableStateOf(false)
+    private var isNotificationPermissionGranted = mutableStateOf(false)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        database = StepDatabase.getDatabase(applicationContext)
+        sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
+        stepSensor = sensorManager?.getDefaultSensor(Sensor.TYPE_STEP_COUNTER)
+
+        activityScope.launch {
+            val historicalBaseline = database.stepDao().getLastSensorValue()
+            if (historicalBaseline != null) {
+                lastSavedSteps = historicalBaseline
+            }
+        }
+
         setContent {
             MaterialTheme {
-                Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                    PermissionAndDashboardScreen()
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
+                    PermissionAndDashboardScreen(
+                        hasActivityPermission = isActivityPermissionGranted.value,
+                        hasNotificationPermission = isNotificationPermissionGranted.value,
+                        onPermissionsUpdated = { activityGranted, notificationGranted ->
+                            isActivityPermissionGranted.value = activityGranted
+                            isNotificationPermissionGranted.value = notificationGranted
+                            if (activityGranted) {
+                                registerPedometerAndService()
+                            }
+                        },
+                        onSyncTrigger = { triggerImmediateSync(this) }
+                    )
                 }
             }
         }
     }
+
+    override fun onResume() {
+        super.onResume()
+        updatePermissionStates()
+
+        if (isActivityPermissionGranted.value) {
+            registerPedometerAndService()
+        }
+    }
+
+    private fun updatePermissionStates() {
+        isActivityPermissionGranted.value = ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.ACTIVITY_RECOGNITION
+        ) == PackageManager.PERMISSION_GRANTED
+
+        isNotificationPermissionGranted.value = ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.POST_NOTIFICATIONS
+        ) == PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun registerPedometerAndService() {
+        stepSensor?.let {
+            sensorManager?.registerListener(this, it, SensorManager.SENSOR_DELAY_UI)
+        }
+        try {
+            val serviceIntent = Intent(
+                applicationContext,
+                com.jpb.steptrackr.services.NonGmsStepService::class.java
+            )
+            ContextCompat.startForegroundService(applicationContext, serviceIntent)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        if (isActivityPermissionGranted.value) {
+            sensorManager?.unregisterListener(this)
+        }
+    }
+
+    override fun onSensorChanged(event: SensorEvent?) {
+        if (event?.sensor?.type == Sensor.TYPE_STEP_COUNTER) {
+            val totalStepsSinceBoot = event.values[0].toLong()
+
+            if (lastSavedSteps == 0L || totalStepsSinceBoot < lastSavedSteps) {
+                lastSavedSteps = totalStepsSinceBoot
+                activityScope.launch {
+                    database.stepDao().updateSensorValue(
+                        SensorMetadata(lastSensorValue = totalStepsSinceBoot)
+                    )
+                }
+                return
+            }
+
+            if (totalStepsSinceBoot > lastSavedSteps) {
+                val delta = totalStepsSinceBoot - lastSavedSteps
+                lastSavedSteps = totalStepsSinceBoot
+                activityScope.launch {
+                    try {
+                        database.stepDao().insertDelta(
+                            StepDelta(
+                                delta = delta,
+                                timestamp = Clock.System.now().toEpochMilliseconds(),
+                                isSynced = false
+                            )
+                        )
+                        database.stepDao().updateSensorValue(
+                            SensorMetadata(lastSensorValue = totalStepsSinceBoot)
+                        )
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }
+            }
+        }
+    }
+
+    override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
+
+    private fun triggerImmediateSync(context: Context) {
+        val syncWorkRequest = OneTimeWorkRequestBuilder<com.jpb.steptrackr.services.HealthSyncWorker>().build()
+        WorkManager.getInstance(context.applicationContext).enqueue(syncWorkRequest)
+    }
 }
 
 @Composable
-fun PermissionAndDashboardScreen() {
+fun PermissionAndDashboardScreen(
+    hasActivityPermission: Boolean,
+    hasNotificationPermission: Boolean,
+    onPermissionsUpdated: (Boolean, Boolean) -> Unit,
+    onSyncTrigger: () -> Unit
+) {
     val context = LocalContext.current
-
     val activityContext = remember(context) { context as Activity }
-    val db = remember { StepDatabase.getDatabase(context.applicationContext) }
+    val appContext = remember(context) { context.applicationContext }
+    val db = remember { StepDatabase.getDatabase(appContext) }
     val healthConnectClient = remember { HealthConnectClient.getOrCreate(activityContext) }
 
     val startOfDay = remember {
         LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
     }
-
     val todayStepsState by db.stepDao().getTodayLocalStepsFlow(startOfDay).collectAsState(initial = 0L)
     val todaySteps = todayStepsState ?: 0L
     val stepGoal = 10000L
 
-    // Unified UI permission states
-    var hasActivityPermission by remember { mutableStateOf(checkPermission(context, Manifest.permission.ACTIVITY_RECOGNITION)) }
-    var hasNotificationPermission by remember { mutableStateOf(checkPermission(context, Manifest.permission.POST_NOTIFICATIONS)) }
     var hasHealthPermission by remember { mutableStateOf(false) }
-    var isSyncing by remember { mutableStateOf(false) }
-
-    val requiredHealthPermissions = remember { setOf(HealthPermission.getWritePermission(StepsRecord::class)) }
-
-    fun startTrackingService() {
-        if (hasActivityPermission && hasNotificationPermission) {
-            try {
-                val serviceIntent = Intent(context.applicationContext, com.jpb.steptrackr.services.NonGmsStepService::class.java)
-                ContextCompat.startForegroundService(context.applicationContext, serviceIntent)
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
+    val requiredHealthPermissions = remember {
+        setOf(HealthPermission.getWritePermission(StepsRecord::class))
     }
 
-    // Health Connect Specific Permission Contract Launcher
     val healthPermissionLauncher = rememberLauncherForActivityResult(
         contract = PermissionController.createRequestPermissionResultContract()
     ) { grantedPermissions ->
         hasHealthPermission = grantedPermissions.containsAll(requiredHealthPermissions)
     }
 
+    // Handles core hardware system permissions dynamically
     val systemPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
-        // Enforces dynamic UI visibility updates instantly upon granting
-        hasActivityPermission = permissions[Manifest.permission.ACTIVITY_RECOGNITION] == true
-        hasNotificationPermission = permissions[Manifest.permission.POST_NOTIFICATIONS] == true
+        val activityGranted = permissions[Manifest.permission.ACTIVITY_RECOGNITION] == true
+        val notificationGranted = permissions[Manifest.permission.POST_NOTIFICATIONS] == true
 
-        if (hasActivityPermission && hasNotificationPermission) {
-            startTrackingService()
-        }
+        // Triggers instant UI recomposition and starts service when granted
+        onPermissionsUpdated(activityGranted, notificationGranted)
     }
 
-    fun triggerImmediateSync() {
-        isSyncing = true
-        val syncWorkRequest = OneTimeWorkRequestBuilder<com.jpb.steptrackr.services.HealthSyncWorker>().build()
-        val workManager = WorkManager.getInstance(context.applicationContext)
-        workManager.enqueue(syncWorkRequest)
-
-        workManager.getWorkInfoByIdLiveData(syncWorkRequest.id).observeForever { workInfo ->
-            if (workInfo != null && workInfo.state.isFinished) {
-                isSyncing = false
-            }
-        }
-    }
-
-    LaunchedEffect(hasActivityPermission, hasNotificationPermission) {
-        val granted = healthConnectClient.permissionController.getGrantedPermissions()
-        hasHealthPermission = granted.containsAll(requiredHealthPermissions)
-        if (hasActivityPermission && hasNotificationPermission) {
-            startTrackingService()
+    LaunchedEffect(Unit) {
+        try {
+            val granted = healthConnectClient.permissionController.getGrantedPermissions()
+            hasHealthPermission = granted.containsAll(requiredHealthPermissions)
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 
@@ -135,10 +244,8 @@ fun PermissionAndDashboardScreen() {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(24.dp, Alignment.CenterVertically)
     ) {
-        // 1. Material Expressive UI Gauge Component
         Material3ExpressiveStepGauge(currentSteps = todaySteps, stepGoal = stepGoal)
 
-        // 2. Health Connect In-App Settings Management Card [1]
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(
@@ -152,27 +259,17 @@ fun PermissionAndDashboardScreen() {
                 Text(
                     text = "Health Connect Integration",
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    fontWeight = FontWeight.Bold
                 )
-
                 Spacer(modifier = Modifier.height(8.dp))
 
-                Text(
-                    text = if (hasHealthPermission) {
-                        "Your step data is securely syncing automatically with Android's system health storage registry."
-                    } else {
-                        "Connect this app with Health Connect to share your daily progress safely with your other fitness tracking utilities."
-                    },
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
                 if (!hasHealthPermission) {
-                    // Explicit assignment button to trigger full screen health prompt [1]
+                    Text(
+                        text = "Connect this app with Health Connect to share your daily progress safely.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
                     Button(
                         onClick = { healthPermissionLauncher.launch(requiredHealthPermissions) },
                         modifier = Modifier.fillMaxWidth()
@@ -180,41 +277,47 @@ fun PermissionAndDashboardScreen() {
                         Text("Link Health Connect")
                     }
                 } else {
-                    // Sync execution control visibility toggle
+                    Text(
+                        text = "Your step data is securely syncing automatically with Android's system health registry.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
                     Button(
-                        onClick = { triggerImmediateSync() },
-                        enabled = !isSyncing,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                        ),
+                        onClick = { onSyncTrigger() },
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text(if (isSyncing) "Syncing Logs..." else "Sync Data Now")
+                        Text("Sync Data Now")
                     }
                 }
             }
         }
 
-        // 3. Hardware System Permissions Conditional block.
-        // It disappears completely from view the exact millisecond both requirements hit true. [1]
+        // Dynamically hides button as soon as both permissions are granted
         if (!hasActivityPermission || !hasNotificationPermission) {
             Button(
                 onClick = {
-                    val channel = NotificationChannel("non_gms_activity_tracking_channel", "Activity Tracking", NotificationManager.IMPORTANCE_MIN)
+                    val channel = NotificationChannel(
+                        "non_gms_activity_tracking_channel",
+                        "Activity Tracking",
+                        NotificationManager.IMPORTANCE_MIN
+                    )
                     val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
                     manager.createNotificationChannel(channel)
-
-                    systemPermissionLauncher.launch(arrayOf(Manifest.permission.ACTIVITY_RECOGNITION, Manifest.permission.POST_NOTIFICATIONS))
+                    systemPermissionLauncher.launch(
+                        arrayOf(
+                            Manifest.permission.ACTIVITY_RECOGNITION,
+                            Manifest.permission.POST_NOTIFICATIONS
+                        )
+                    )
                 },
-                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
             ) {
                 Text("Missing Core Hardware Permissions (Fix Access)")
             }
         } else {
-            // Displays helpful operational confirmation if buttons are hidden [1]
             Text(
-                text = "✓ Pedometer monitoring active in background",
+                text = "✓ Pedometer monitoring active",
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.primary
             )
@@ -224,15 +327,27 @@ fun PermissionAndDashboardScreen() {
 
 @SuppressLint("DefaultLocale")
 @Composable
-fun Material3ExpressiveStepGauge(currentSteps: Long, stepGoal: Long, modifier: Modifier = Modifier) {
+fun Material3ExpressiveStepGauge(
+    currentSteps: Long,
+    stepGoal: Long,
+    modifier: Modifier = Modifier
+) {
     val progress = if (stepGoal > 0) (currentSteps.toFloat() / stepGoal.toFloat()).coerceIn(0f, 1f) else 0f
     val animatedProgress by animateFloatAsState(
         targetValue = progress,
-        animationSpec = tween(durationMillis = 1400, easing = { it * it * (3f - 2f * it) }),
+        animationSpec = tween(
+            durationMillis = 1400,
+            easing = { it * it * (3f - 2f * it) }
+        ),
         label = "GaugeProgress"
     )
 
-    Box(modifier = modifier.size(280.dp).padding(16.dp), contentAlignment = Alignment.Center) {
+    Box(
+        modifier = modifier
+            .size(280.dp)
+            .padding(16.dp),
+        contentAlignment = Alignment.Center
+    ) {
         val progressColor = MaterialTheme.colorScheme.primary
         val trackColor = MaterialTheme.colorScheme.surfaceVariant
 
@@ -241,18 +356,44 @@ fun Material3ExpressiveStepGauge(currentSteps: Long, stepGoal: Long, modifier: M
             val radius = (size.minDimension - strokeWidth) / 2
             val center = Offset(size.width / 2, size.height / 2)
 
-            drawArc(color = trackColor, startAngle = 120f, sweepAngle = 300f, useCenter = false, topLeft = Offset(center.x - radius, center.y - radius), size = Size(radius * 2, radius * 2), style = Stroke(width = strokeWidth, cap = StrokeCap.Round))
-            drawArc(color = progressColor, startAngle = 120f, sweepAngle = 300f * animatedProgress, useCenter = false, topLeft = Offset(center.x - radius, center.y - radius), size = Size(radius * 2, radius * 2), style = Stroke(width = strokeWidth, cap = StrokeCap.Round))
+            drawArc(
+                color = trackColor,
+                startAngle = 120f,
+                sweepAngle = 300f,
+                useCenter = false,
+                topLeft = Offset(center.x - radius, center.y - radius),
+                size = Size(radius * 2, radius * 2),
+                style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+            )
+
+            drawArc(
+                color = progressColor,
+                startAngle = 120f,
+                sweepAngle = 300f * animatedProgress,
+                useCenter = false,
+                topLeft = Offset(center.x - radius, center.y - radius),
+                size = Size(radius * 2, radius * 2),
+                style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+            )
         }
 
-        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(top = 12.dp)) {
-            Text(text = String.format("%,d", currentSteps), fontSize = 44.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-1).sp)
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(top = 12.dp)
+        ) {
+            Text(
+                text = String.format("%,d", currentSteps),
+                fontSize = 44.sp,
+                fontWeight = FontWeight.ExtraBold,
+                letterSpacing = (-1).sp
+            )
             Spacer(modifier = Modifier.height(2.dp))
-            Text(text = "of ${String.format("%,d", stepGoal)} steps", fontSize = 15.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                text = "of ${String.format("%,d", stepGoal)} steps",
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
-}
-
-private fun checkPermission(context: Context, permission: String): Boolean {
-    return ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
 }
