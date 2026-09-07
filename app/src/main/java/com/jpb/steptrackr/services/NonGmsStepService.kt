@@ -62,7 +62,8 @@ class NonGmsStepService : Service(), SensorEventListener {
 
     override fun onSensorChanged(event: SensorEvent?) {
         if (event?.sensor?.type == Sensor.TYPE_STEP_COUNTER) {
-            val totalStepsSinceBoot = event.values.contentToString().toLong()
+            // Extract index 0 safely or use .first() and cast that Float primitive to a Long
+            val totalStepsSinceBoot = event.values[0].toLong()
 
             if (lastSavedSteps in 1..<totalStepsSinceBoot) {
                 val delta = totalStepsSinceBoot - lastSavedSteps
