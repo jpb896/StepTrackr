@@ -49,14 +49,14 @@ fun SettingsScreen(
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
             Text(
-                text = "Daily Step Goal",
+                text = "Daily step target",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
 
             // Preset Goal Chip Group
             Text(
-                text = "Quick Select",
+                text = "Preset targets",
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -95,7 +95,7 @@ fun SettingsScreen(
                         isError = true
                     }
                 },
-                label = { Text("Custom Step Goal") },
+                label = { Text("Custom target") },
                 isError = isError,
                 supportingText = {
                     if (isError) {
@@ -113,7 +113,7 @@ fun SettingsScreen(
                 onClick = onNavigateBack,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Save & Return")
+                Text("Save")
             }
         }
     }
