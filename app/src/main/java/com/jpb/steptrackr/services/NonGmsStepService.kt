@@ -5,7 +5,6 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
-import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
@@ -40,7 +39,7 @@ class NonGmsStepService : Service(), SensorEventListener {
         super.onCreate()
         Log.d("StepService", "Service lifecycle hook: onCreate initiated")
         database = StepDatabase.getDatabase(this)
-        sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
+        sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager
         stepSensor = sensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER)
         createNotificationChannel()
     }
@@ -99,12 +98,12 @@ class NonGmsStepService : Service(), SensorEventListener {
     override fun onSensorChanged(event: SensorEvent?) {
         if (event?.sensor?.type == Sensor.TYPE_STEP_COUNTER) {
             val totalStepsSinceBoot = event.values[0].toLong()
-            Log.d("StepService", "Hardware event captured: Raw count since boot = $totalStepsSinceBoot")
+            Log.d("StepService", "Hardware event captured; raw count since boot = $totalStepsSinceBoot")
 
             // FIX: If lastSavedSteps is higher than what the physical device says, it's a mismatch (reboot/cache drift).
             // Reset our tracking variable baseline immediately to prevent data locking.
             if (lastSavedSteps == 0L || totalStepsSinceBoot < lastSavedSteps) {
-                Log.d("StepService", "Baseline anomaly or device reboot. Resetting baseline to current sensor count: $totalStepsSinceBoot")
+                Log.d("StepService", "Baseline anomaly or device reboot detected. Resetting baseline to current sensor count: $totalStepsSinceBoot")
                 lastSavedSteps = totalStepsSinceBoot
                 serviceScope.launch {
                     database.stepDao().updateSensorValue(SensorMetadata(lastSensorValue = totalStepsSinceBoot))
@@ -136,7 +135,7 @@ class NonGmsStepService : Service(), SensorEventListener {
                 )
                 Log.d("StepService", "Room persistence execution complete. Saved delta: $delta")
             } catch (e: Exception) {
-                Log.e("StepService", "Room transaction write crash", e)
+                Log.e("StepService", "Room transaction write crash detected", e)
             }
         }
     }
@@ -152,8 +151,8 @@ class NonGmsStepService : Service(), SensorEventListener {
     }
 
     private fun createNotificationChannel() {
-        val channel = NotificationChannel(CHANNEL_ID, "Activity Tracking", NotificationManager.IMPORTANCE_MIN)
-        val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val channel = NotificationChannel(CHANNEL_ID, "Activity tracking", NotificationManager.IMPORTANCE_MIN)
+        val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         manager.createNotificationChannel(channel)
     }
 

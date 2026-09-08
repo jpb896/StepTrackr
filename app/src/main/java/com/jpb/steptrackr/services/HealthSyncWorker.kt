@@ -99,7 +99,7 @@ class HealthSyncWorker(appContext: Context, params: WorkerParameters) : Coroutin
                         }
                     }
                 } catch (e: Exception) {
-                    Log.e("HealthSyncWorker", "Error fetching from GMS Fitness Local", e)
+                    Log.e("HealthSyncWorker", "Error fetching data from GMS Fitness Local", e)
                 }
             }
 

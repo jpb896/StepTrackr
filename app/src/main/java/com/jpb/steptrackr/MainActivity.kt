@@ -261,7 +261,7 @@ fun PermissionAndDashboardScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "Health Connect Integration",
+                    text = "Health Connect integration",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
@@ -269,7 +269,7 @@ fun PermissionAndDashboardScreen(
 
                 if (!hasHealthPermission) {
                     Text(
-                        text = "Connect this app with Health Connect to share your daily progress safely.",
+                        text = "Connect this app with Health Connect to share your daily progress safely and securely.",
                         style = MaterialTheme.typography.bodyMedium,
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center
                     )
@@ -294,7 +294,7 @@ fun PermissionAndDashboardScreen(
                         },
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Sync Data Now")
+                        Text("Sync data now")
                     }
                 }
             }
@@ -306,7 +306,7 @@ fun PermissionAndDashboardScreen(
                 onClick = {
                     val channel = NotificationChannel(
                         "non_gms_activity_tracking_channel",
-                        "Activity Tracking",
+                        "Activity tracking",
                         NotificationManager.IMPORTANCE_MIN
                     )
                     val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -320,7 +320,7 @@ fun PermissionAndDashboardScreen(
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
             ) {
-                Text("Missing Core Hardware Permissions (Fix Access)")
+                Text("Grant required permissions")
             }
         } else {
             Text(
