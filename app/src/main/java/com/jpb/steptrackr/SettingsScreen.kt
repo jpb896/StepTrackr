@@ -10,9 +10,9 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.jpb.steptrackr.ui.ExpressiveButton
 import com.jpb.steptrackr.utils.StepGoalPreferences
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     onNavigateBack: () -> Unit
@@ -109,7 +109,7 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.weight(1f))
 
-            Button(
+            ExpressiveButton(
                 onClick = onNavigateBack,
                 modifier = Modifier.fillMaxWidth()
             ) {

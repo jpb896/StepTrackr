@@ -43,6 +43,7 @@ import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.records.StepsRecord
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
+import com.jpb.steptrackr.ui.ExpressiveButton
 import com.jpb.steptrackr.ui.theme.AppTheme
 import com.jpb.steptrackr.utils.SensorMetadata
 import com.jpb.steptrackr.utils.StepDatabase
@@ -313,7 +314,7 @@ fun PermissionAndDashboardScreen(
                             textAlign = androidx.compose.ui.text.style.TextAlign.Center
                         )
                         Spacer(modifier = Modifier.height(16.dp))
-                        Button(
+                        ExpressiveButton(
                             onClick = { healthPermissionLauncher.launch(requiredHealthPermissions) },
                             modifier = Modifier.fillMaxWidth()
                         ) {
@@ -326,7 +327,7 @@ fun PermissionAndDashboardScreen(
                             textAlign = androidx.compose.ui.text.style.TextAlign.Center
                         )
                         Spacer(modifier = Modifier.height(16.dp))
-                        Button(
+                        ExpressiveButton(
                             onClick = {
                                 onSyncTrigger()
                                 Toast.makeText(
@@ -345,7 +346,7 @@ fun PermissionAndDashboardScreen(
 
             // Dynamically hides button as soon as both permissions are granted
             if (!hasActivityPermission || !hasNotificationPermission) {
-                Button(
+                ExpressiveButton(
                     onClick = {
                         val channel = NotificationChannel(
                             "non_gms_activity_tracking_channel",
