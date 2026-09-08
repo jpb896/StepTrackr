@@ -31,6 +31,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -45,6 +46,7 @@ import com.jpb.steptrackr.ui.theme.AppTheme
 import com.jpb.steptrackr.utils.SensorMetadata
 import com.jpb.steptrackr.utils.StepDatabase
 import com.jpb.steptrackr.utils.StepDelta
+import com.jpb.steptrackr.utils.StepGoalPreferences
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -63,6 +65,8 @@ class MainActivity : ComponentActivity(), SensorEventListener {
     // Observable Compose state
     private var isActivityPermissionGranted = mutableStateOf(false)
     private var isNotificationPermissionGranted = mutableStateOf(false)
+
+    enum class Screen { Dashboard, Settings }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -83,20 +87,31 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    PermissionAndDashboardScreen(
-                        hasActivityPermission = isActivityPermissionGranted.value,
-                        hasNotificationPermission = isNotificationPermissionGranted.value,
-                        onPermissionsUpdated = { activityGranted, notificationGranted ->
-                            isActivityPermissionGranted.value = activityGranted
-                            isNotificationPermissionGranted.value = notificationGranted
-                            if (activityGranted) {
-                                registerPedometerAndService()
-                            }
-                        },
-                        onSyncTrigger = {
-                            triggerImmediateSync(this)
+                    var currentScreen by remember { mutableStateOf(Screen.Dashboard) }
+
+                    when (currentScreen) {
+                        Screen.Dashboard -> {
+                            PermissionAndDashboardScreen(
+                                hasActivityPermission = isActivityPermissionGranted.value,
+                                hasNotificationPermission = isNotificationPermissionGranted.value,
+                                onPermissionsUpdated = { activityGranted, notificationGranted ->
+                                    isActivityPermissionGranted.value = activityGranted
+                                    isNotificationPermissionGranted.value = notificationGranted
+                                    if (activityGranted) registerPedometerAndService()
+                                },
+                                onSyncTrigger = {
+                                    triggerImmediateSync(this@MainActivity)
+                                    Toast.makeText(this@MainActivity, "Steps synced to Health Connect!", Toast.LENGTH_SHORT).show()
+                                },
+                                onOpenSettings = { currentScreen = Screen.Settings }
+                            )
                         }
-                    )
+                        Screen.Settings -> {
+                            SettingsScreen(
+                                onNavigateBack = { currentScreen = Screen.Dashboard }
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -195,9 +210,11 @@ fun PermissionAndDashboardScreen(
     hasActivityPermission: Boolean,
     hasNotificationPermission: Boolean,
     onPermissionsUpdated: (Boolean, Boolean) -> Unit,
-    onSyncTrigger: () -> Unit
+    onSyncTrigger: () -> Unit,
+    onOpenSettings: () -> Unit
 ) {
     val context = LocalContext.current
+    val goalPrefs = remember { StepGoalPreferences(context) }
     val activityContext = remember(context) { context as Activity }
     val appContext = remember(context) { context.applicationContext }
     val db = remember { StepDatabase.getDatabase(appContext) }
@@ -206,9 +223,10 @@ fun PermissionAndDashboardScreen(
     val startOfDay = remember {
         LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
     }
-    val todayStepsState by db.stepDao().getTodayLocalStepsFlow(startOfDay).collectAsState(initial = 0L)
+    val todayStepsState by db.stepDao().getTodayLocalStepsFlow(startOfDay)
+        .collectAsState(initial = 0L)
     val todaySteps = todayStepsState ?: 0L
-    val stepGoal = 10000L
+    val stepGoal = remember(context) { goalPrefs.getStepGoal() }
 
     var hasHealthPermission by remember { mutableStateOf(false) }
     val requiredHealthPermissions = remember {
@@ -248,86 +266,112 @@ fun PermissionAndDashboardScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(24.dp, Alignment.CenterVertically)
     ) {
-        Material3ExpressiveStepGauge(currentSteps = todaySteps, stepGoal = stepGoal)
-
-        Card(
+        // Settings Icon Row
+        Row(
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-            )
+            horizontalArrangement = Arrangement.End
         ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = "Health Connect integration",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+            IconButton(onClick = onOpenSettings) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_settings),
+                    contentDescription = "Settings"
                 )
-                Spacer(modifier = Modifier.height(8.dp))
-
-                if (!hasHealthPermission) {
-                    Text(
-                        text = "Connect this app with Health Connect to share your daily progress safely and securely.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Button(
-                        onClick = { healthPermissionLauncher.launch(requiredHealthPermissions) },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Link Health Connect")
-                    }
-                } else {
-                    Text(
-                        text = "Your step data is securely syncing automatically with Android's system health registry.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Button(
-                        onClick = {
-                            onSyncTrigger()
-                            Toast.makeText(context, "Steps synced to Health Connect!", Toast.LENGTH_SHORT).show()
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Sync data now")
-                    }
-                }
             }
         }
 
-        // Dynamically hides button as soon as both permissions are granted
-        if (!hasActivityPermission || !hasNotificationPermission) {
-            Button(
-                onClick = {
-                    val channel = NotificationChannel(
-                        "non_gms_activity_tracking_channel",
-                        "Activity tracking",
-                        NotificationManager.IMPORTANCE_MIN
-                    )
-                    val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-                    manager.createNotificationChannel(channel)
-                    systemPermissionLauncher.launch(
-                        arrayOf(
-                            Manifest.permission.ACTIVITY_RECOGNITION,
-                            Manifest.permission.POST_NOTIFICATIONS
-                        )
-                    )
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(24.dp, Alignment.CenterVertically)
+        ) {
+            Material3ExpressiveStepGauge(currentSteps = todaySteps, stepGoal = stepGoal)
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                )
             ) {
-                Text("Grant required permissions")
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "Health Connect integration",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    if (!hasHealthPermission) {
+                        Text(
+                            text = "Connect this app with Health Connect to share your daily progress safely and securely.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(
+                            onClick = { healthPermissionLauncher.launch(requiredHealthPermissions) },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Link Health Connect")
+                        }
+                    } else {
+                        Text(
+                            text = "Your step data is securely syncing automatically with Android's system health registry.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(
+                            onClick = {
+                                onSyncTrigger()
+                                Toast.makeText(
+                                    context,
+                                    "Steps synced to Health Connect!",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Sync data now")
+                        }
+                    }
+                }
             }
-        } else {
-            Text(
-                text = "Pedometer monitoring active",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary
-            )
+
+            // Dynamically hides button as soon as both permissions are granted
+            if (!hasActivityPermission || !hasNotificationPermission) {
+                Button(
+                    onClick = {
+                        val channel = NotificationChannel(
+                            "non_gms_activity_tracking_channel",
+                            "Activity tracking",
+                            NotificationManager.IMPORTANCE_MIN
+                        )
+                        val manager =
+                            context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                        manager.createNotificationChannel(channel)
+                        systemPermissionLauncher.launch(
+                            arrayOf(
+                                Manifest.permission.ACTIVITY_RECOGNITION,
+                                Manifest.permission.POST_NOTIFICATIONS
+                            )
+                        )
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Grant required permissions")
+                }
+            } else {
+                Text(
+                    text = "Pedometer monitoring active",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
         }
     }
 }
