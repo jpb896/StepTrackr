@@ -13,6 +13,7 @@ import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -92,7 +93,9 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                                 registerPedometerAndService()
                             }
                         },
-                        onSyncTrigger = { triggerImmediateSync(this) }
+                        onSyncTrigger = {
+                            triggerImmediateSync(this)
+                        }
                     )
                 }
             }
@@ -285,7 +288,10 @@ fun PermissionAndDashboardScreen(
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Button(
-                        onClick = { onSyncTrigger() },
+                        onClick = {
+                            onSyncTrigger()
+                            Toast.makeText(context, "Steps synced to Health Connect!", Toast.LENGTH_SHORT).show()
+                        },
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text("Sync Data Now")
