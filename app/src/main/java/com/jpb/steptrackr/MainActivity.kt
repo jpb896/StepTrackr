@@ -68,7 +68,7 @@ class MainActivity : ComponentActivity(), SensorEventListener {
     private var isActivityPermissionGranted = mutableStateOf(false)
     private var isNotificationPermissionGranted = mutableStateOf(false)
 
-    enum class Screen { Dashboard, Settings }
+    enum class Screen { Dashboard, Settings, About }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -111,7 +111,13 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                         }
                         Screen.Settings -> {
                             SettingsScreen(
-                                onNavigateBack = { currentScreen = Screen.Dashboard }
+                                onNavigateBack = { currentScreen = Screen.Dashboard },
+                                onNavigateToAbout = { currentScreen = Screen.About }
+                            )
+                        }
+                        Screen.About -> {
+                            AboutScreen(
+                                onNavigateBack = { currentScreen = Screen.Settings }
                             )
                         }
                     }
