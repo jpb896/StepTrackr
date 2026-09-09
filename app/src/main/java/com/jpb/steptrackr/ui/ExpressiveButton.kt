@@ -40,7 +40,6 @@ fun ExpressiveButton(
         shapes = ButtonDefaults.shapes(
             shape = RoundedCornerShape(28.dp),        // Default fully rounded container (Pill)
             pressedShape = RoundedCornerShape(8.dp),  // Corners tighten/decrease radius on press
-            //focusedShape = RoundedCornerShape(12.dp)  // Decreased radius on focus
         )
     )
 }
