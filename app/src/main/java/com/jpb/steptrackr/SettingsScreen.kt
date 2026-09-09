@@ -53,15 +53,15 @@ fun SettingsScreen(
                 .padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Section Header
+            // Step target configuration section
             Text(
-                text = "Daily Step Target",
+                text = "Daily step target",
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.SemiBold
             )
 
-            // Quick Select Chips
+            // Quick Select Chips - for selecting a preset step target
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
                     text = "Preset targets",
@@ -88,7 +88,7 @@ fun SettingsScreen(
                 }
             }
 
-            // Custom Input Field
+            // Input field for inputting custom goal/target
             OutlinedTextField(
                 value = customGoalInput,
                 onValueChange = { newValue ->
@@ -116,9 +116,9 @@ fun SettingsScreen(
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
-            // Application Info / About Navigation
+            // Application info/about section
             Text(
-                text = "App Info",
+                text = "App info",
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.SemiBold
@@ -158,7 +158,8 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.weight(1f))
 
-            // Primary Bottom Action
+            // Primary Bottom Action: backwards navigation #2
+            // TODO: Get rid of this for v1.2
             ExpressiveButton(
                 onClick = onNavigateBack,
                 modifier = Modifier.fillMaxWidth()

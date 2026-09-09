@@ -41,7 +41,7 @@ fun AboutScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
-            // App Branding Section
+            // Branding section
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -102,24 +102,24 @@ fun AboutScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Text(
-                    text = "Key Features",
+                    text = "Key features",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.primary
                 )
 
                 AboutFeatureItem(
-                    title = "Non-GMS Hardware Tracking",
+                    title = "Non-GMS step tracking",
                     description = "Runs directly on local device sensors using a foreground service."
                 )
 
                 AboutFeatureItem(
-                    title = "GMS Hardware Tracking",
+                    title = "GMS step tracking",
                     description = "The app can use GMS Health APIs if available to allow for a more seamless experience on GMS devices."
                 )
 
                 AboutFeatureItem(
-                    title = "Health Connect Integration",
+                    title = "Health Connect integration",
                     description = "Syncs background steps directly to your central health dashboard."
                 )
 
@@ -131,7 +131,7 @@ fun AboutScreen(
 
             Spacer(modifier = Modifier.weight(1f))
 
-            // Footer / Legal info
+            // Legal and framework info
             Text(
                 text = "Built with Jetpack Compose & Kotlin\n© 2026 jpb\nLicensed under the Apache License 2.0",
                 style = MaterialTheme.typography.bodySmall,

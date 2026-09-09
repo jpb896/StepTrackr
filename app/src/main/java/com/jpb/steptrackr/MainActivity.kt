@@ -63,8 +63,6 @@ class MainActivity : ComponentActivity(), SensorEventListener {
     private var lastSavedSteps = 0L
     private lateinit var database: StepDatabase
     private val activityScope = CoroutineScope(Dispatchers.IO)
-
-    // Observable Compose state
     private var isActivityPermissionGranted = mutableStateOf(false)
     private var isNotificationPermissionGranted = mutableStateOf(false)
 
@@ -90,6 +88,7 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
+                    // Screen instantiation - "screens" in Compose are the equivalents of "fragments" in View
                     var currentScreen by remember { mutableStateOf(Screen.Dashboard) }
 
                     when (currentScreen) {
@@ -214,6 +213,7 @@ class MainActivity : ComponentActivity(), SensorEventListener {
     }
 }
 
+// Core UI-related logic for the main screen
 @Composable
 fun PermissionAndDashboardScreen(
     hasActivityPermission: Boolean,
@@ -274,7 +274,7 @@ fun PermissionAndDashboardScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(24.dp, Alignment.CenterVertically)
     ) {
-        // Settings Icon Row
+        // Settings icon row
         Row(
             modifier = Modifier.fillMaxWidth().safeDrawingPadding(),
             horizontalArrangement = Arrangement.End

@@ -14,7 +14,6 @@ import com.jpb.steptrackr.R
 @Composable
 fun AppIconImage(modifier: Modifier = Modifier) {
     val context = LocalContext.current
-
     val bitmap = remember(context) {
         val drawable = ContextCompat.getDrawable(context, R.mipmap.ic_launcher)
         drawable?.let {
