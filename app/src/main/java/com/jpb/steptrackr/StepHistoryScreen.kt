@@ -95,7 +95,7 @@ fun StepHistoryScreen(
                     }
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
-                            text = if (selectedTimeFrame == HistoryTimeFrame.HOURLY) "Avg / Hour" else "Avg / Day",
+                            text = if (selectedTimeFrame == HistoryTimeFrame.HOURLY) "Avg/hr" else "Avg/day",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
