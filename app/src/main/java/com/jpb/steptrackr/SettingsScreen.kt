@@ -155,17 +155,6 @@ fun SettingsScreen(
                     )
                 }
             }
-
-            Spacer(modifier = Modifier.weight(1f))
-
-            // Primary Bottom Action: backwards navigation #2
-            // TODO: Get rid of this for v1.2
-            ExpressiveButton(
-                onClick = onNavigateBack,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Save and close")
-            }
         }
     }
 }
