@@ -28,6 +28,13 @@ android {
                 enable = false
             }
         }
+        debug {
+            packaging {
+                jniLibs {
+                    keepDebugSymbols += "**/*.so"
+                }
+            }
+        }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11

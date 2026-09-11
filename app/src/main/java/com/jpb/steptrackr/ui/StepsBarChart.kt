@@ -18,11 +18,7 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-
-data class StepDataPoint(
-    val label: String, // e.g., "8 AM", "10 AM", "Mon", "Tue"
-    val steps: Int
-)
+import com.jpb.steptrackr.utils.StepDataPoint
 
 @Composable
 fun StepsBarChart(

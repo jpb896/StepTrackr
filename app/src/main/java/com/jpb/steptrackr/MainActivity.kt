@@ -19,6 +19,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
@@ -49,11 +50,15 @@ import com.jpb.steptrackr.utils.SensorMetadata
 import com.jpb.steptrackr.utils.StepDatabase
 import com.jpb.steptrackr.utils.StepDelta
 import com.jpb.steptrackr.utils.StepGoalPreferences
+import com.jpb.steptrackr.utils.StepRepository
+import com.jpb.steptrackr.viewmodels.StepHistoryViewModel
+import com.jpb.steptrackr.viewmodels.StepHistoryViewModelFactory
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.ZoneId
+import kotlin.getValue
 import kotlin.time.Clock
 
 class MainActivity : ComponentActivity(), SensorEventListener {
@@ -66,7 +71,11 @@ class MainActivity : ComponentActivity(), SensorEventListener {
     private var isActivityPermissionGranted = mutableStateOf(false)
     private var isNotificationPermissionGranted = mutableStateOf(false)
 
-    enum class Screen { Dashboard, Settings, About }
+    private val stepHistoryViewModel: StepHistoryViewModel by viewModels {
+        StepHistoryViewModelFactory(StepRepository(database.stepDao()))
+    }
+
+    enum class Screen { Dashboard, Settings, About, StepHistory }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -105,7 +114,8 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                                     triggerImmediateSync(this@MainActivity)
                                     Toast.makeText(this@MainActivity, "Steps synced to Health Connect!", Toast.LENGTH_SHORT).show()
                                 },
-                                onOpenSettings = { currentScreen = Screen.Settings }
+                                onOpenSettings = { currentScreen = Screen.Settings },
+                                onOpenStepHistory = { currentScreen = Screen.StepHistory }
                             )
                         }
                         Screen.Settings -> {
@@ -117,6 +127,13 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                         Screen.About -> {
                             AboutScreen(
                                 onNavigateBack = { currentScreen = Screen.Settings }
+                            )
+                        }
+                        Screen.StepHistory -> {
+                            val historyState by stepHistoryViewModel.uiState.collectAsState()
+                            StepHistoryScreen(
+                                onBackClick = { currentScreen = Screen.Dashboard },
+                                historyState = historyState
                             )
                         }
                     }
@@ -220,7 +237,8 @@ fun PermissionAndDashboardScreen(
     hasNotificationPermission: Boolean,
     onPermissionsUpdated: (Boolean, Boolean) -> Unit,
     onSyncTrigger: () -> Unit,
-    onOpenSettings: () -> Unit
+    onOpenSettings: () -> Unit,
+    onOpenStepHistory: () -> Unit
 ) {
     val context = LocalContext.current
     val goalPrefs = remember { StepGoalPreferences(context) }
@@ -279,6 +297,12 @@ fun PermissionAndDashboardScreen(
             modifier = Modifier.fillMaxWidth().safeDrawingPadding(),
             horizontalArrangement = Arrangement.End
         ) {
+            IconButton(onClick = onOpenStepHistory) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_history), // Replace with your history icon resource
+                    contentDescription = "Step History"
+                )
+            }
             IconButton(onClick = onOpenSettings) {
                 Icon(
                     painter = painterResource(R.drawable.ic_settings),
