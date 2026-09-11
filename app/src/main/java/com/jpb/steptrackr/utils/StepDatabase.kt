@@ -2,7 +2,9 @@ package com.jpb.steptrackr.utils
 
 import android.content.Context
 import androidx.room.*
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import java.time.LocalDate
 import java.time.ZoneId
@@ -35,6 +37,11 @@ data class DailyStepTuple(
 
 @Dao
 interface StepDao {
+
+    // Helper Flow to observe any changes in the step_deltas table
+    @Query("SELECT COUNT(*) FROM step_deltas")
+    fun getAllRecentDeltasFlow(): Flow<Int>
+
     @Insert
     suspend fun insertDelta(stepDelta: StepDelta)
 
@@ -129,20 +136,24 @@ class StepRepository(private val stepDao: StepDao) {
             }
         }
     }
-
-    // Fetch Daily data for the past N days
+    // Dynamic daily step flow
+    @OptIn(ExperimentalCoroutinesApi::class)
     fun getDailyStepsForPastDays(days: Int = 7): Flow<List<StepDataPoint>> {
-        val now = LocalDate.now()
-        val startTimeMs = now.minusDays((days - 1).toLong())
-            .atStartOfDay(ZoneId.systemDefault())
-            .toInstant()
-            .toEpochMilli()
-
-        val endTimeMs = System.currentTimeMillis()
-
         val dateFormatter = DateTimeFormatter.ofPattern("E") // e.g., "Mon", "Tue"
 
-        return stepDao.getDailyStepsFlow(startTimeMs, endTimeMs).map { tuples ->
+        // Compute the rolling date range dynamically whenever room updates
+        return stepDao.getAllRecentDeltasFlow().map { _ ->
+            val now = LocalDate.now()
+            val startTimeMs = now.minusDays((days - 1).toLong())
+                .atStartOfDay(ZoneId.systemDefault())
+                .toInstant()
+                .toEpochMilli()
+            val endTimeMs = System.currentTimeMillis()
+
+            Pair(startTimeMs, endTimeMs)
+        }.flatMapLatest { (startTime, endTime) ->
+            stepDao.getDailyStepsFlow(startTime, endTime)
+        }.map { tuples ->
             tuples.map { tuple ->
                 val date = LocalDate.parse(tuple.dateString)
                 StepDataPoint(
