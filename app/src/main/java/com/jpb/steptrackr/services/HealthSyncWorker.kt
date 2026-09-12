@@ -1,6 +1,7 @@
 package com.jpb.steptrackr.services
 
 import android.content.Context
+import android.os.Build
 import android.util.Log
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.permission.HealthPermission
@@ -22,6 +23,24 @@ import java.time.ZoneOffset
 import java.util.concurrent.TimeUnit
 
 class HealthSyncWorker(appContext: Context, params: WorkerParameters) : CoroutineWorker(appContext, params) {
+
+    private fun getRecordingDevice(): Device {
+        val marketName = try {
+            val systemPropertiesClass = Class.forName("android.os.SystemProperties")
+            val getMethod = systemPropertiesClass.getMethod("get", String::class.java)
+            val name = getMethod.invoke(null, "ro.product.marketname") as? String
+            if (!name.isNullOrBlank()) name else Build.MODEL
+        } catch (e: Exception) {
+            Build.MODEL
+        }
+
+        return Device(
+            manufacturer = Build.MANUFACTURER, // "Google", "Xiaomi", "Redmi", etc.
+            model = marketName,                // "Pixel 6a", "Redmi Note 11 Pro 5G", etc.
+            type = Device.TYPE_PHONE
+        )
+    }
+
     override suspend fun doWork(): Result {
         val context = applicationContext
         val healthConnectClient = HealthConnectClient.getOrCreate(context)
@@ -39,6 +58,7 @@ class HealthSyncWorker(appContext: Context, params: WorkerParameters) : Coroutin
 
         return try {
             val stepRecordsToInsert = mutableListOf<StepsRecord>()
+            val recordingDevice = getRecordingDevice()
 
             // 1. Process local Room deltas (from NonGmsStepService / hardware sensor)
             if (unsyncedDeltas.isNotEmpty()) {
@@ -50,7 +70,7 @@ class HealthSyncWorker(appContext: Context, params: WorkerParameters) : Coroutin
                     val blockStartTime = Instant.ofEpochMilli(timeBlock * tenMinutesInMs)
                     val blockEndTime = blockStartTime.plusSeconds(600)
                     val localZoneOffset = ZoneOffset.systemDefault().rules.getOffset(blockStartTime)
-
+                    val recordId = "steptrackr_delta_block_${timeBlock * tenMinutesInMs}"
                     val record = StepsRecord(
                         count = totalStepsInBlock,
                         startTime = blockStartTime,
@@ -58,7 +78,8 @@ class HealthSyncWorker(appContext: Context, params: WorkerParameters) : Coroutin
                         startZoneOffset = localZoneOffset,
                         endZoneOffset = localZoneOffset,
                         metadata = Metadata.autoRecorded(
-                            device = Device(type = Device.TYPE_PHONE)
+                            device = recordingDevice,
+                            clientRecordId = recordId,
                         )
                     )
                     stepRecordsToInsert.add(record)
@@ -92,7 +113,7 @@ class HealthSyncWorker(appContext: Context, params: WorkerParameters) : Coroutin
                                 startZoneOffset = localZoneOffset,
                                 endZoneOffset = localZoneOffset,
                                 metadata = Metadata.autoRecorded(
-                                    device = Device(type = Device.TYPE_PHONE)
+                                    device = recordingDevice
                                 )
                             )
                             stepRecordsToInsert.add(record)
