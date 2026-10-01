@@ -1,17 +1,17 @@
 [versions]
 agp = "9.5.0-alpha08"
 connectClient = "1.1.0"
-coreKtx = "1.19.0"
+coreKtx = "1.19.1"
 kotlinxCoroutinesPlayServices = "1.11.0"
 lifecycleRuntimeKtx = "2.11.0"
 activityCompose = "1.13.0"
 kotlin = "2.4.20"
 composeBom = "2026.09.00"
-material3 = "1.5.0-alpha28"
-playServicesBase = "18.10.1"
+material3 = "1.5.0-alpha29"
+playServicesBase = "18.11.0"
 playServicesFitness = "21.3.0"
 roomVersion = "2.8.5"
-workRuntimeKtx = "2.11.2"
+workRuntimeKtx = "2.12.0"
 foundationLayout = "1.12.1"
 
 [libraries]
