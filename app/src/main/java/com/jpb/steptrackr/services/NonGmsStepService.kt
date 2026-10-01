@@ -17,13 +17,17 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.jpb.steptrackr.R
+import com.jpb.steptrackr.utils.GoalNotificationHelper
 import com.jpb.steptrackr.utils.SensorMetadata
-import com.jpb.steptrackr.utils.StepDelta
 import com.jpb.steptrackr.utils.StepDatabase
+import com.jpb.steptrackr.utils.StepDelta
+import com.jpb.steptrackr.utils.StepGoalPreferences
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import java.time.LocalDate
+import java.time.ZoneId
 import kotlin.time.Clock
 import kotlin.time.Instant
 
@@ -34,6 +38,7 @@ class NonGmsStepService : Service(), SensorEventListener {
     private lateinit var database: StepDatabase
     private val serviceScope = CoroutineScope(Dispatchers.IO)
     private var isInitialized = false
+    private var goalNotifiedToday = false
 
     override fun onCreate() {
         super.onCreate()
@@ -47,7 +52,6 @@ class NonGmsStepService : Service(), SensorEventListener {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.d("StepService", "Service running: onStartCommand executed")
 
-        // Strict guard condition prevents the service from spinning up illegally if permissions are missing
         val hasActivityPermission = ContextCompat.checkSelfPermission(
             this,
             Manifest.permission.ACTIVITY_RECOGNITION
@@ -59,7 +63,6 @@ class NonGmsStepService : Service(), SensorEventListener {
             return START_NOT_STICKY
         }
 
-        // Instantly construct the mandatory notification to satisfy the OS watchdog 10-second limit
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Tracking Steps")
             .setContentText("Pedometer context active.")
@@ -100,10 +103,8 @@ class NonGmsStepService : Service(), SensorEventListener {
             val totalStepsSinceBoot = event.values[0].toLong()
             Log.d("StepService", "Hardware event captured; raw count since boot = $totalStepsSinceBoot")
 
-            // FIX: If lastSavedSteps is higher than what the physical device says, it's a mismatch (reboot/cache drift).
-            // Reset our tracking variable baseline immediately to prevent data locking.
             if (lastSavedSteps == 0L || totalStepsSinceBoot < lastSavedSteps) {
-                Log.d("StepService", "Baseline anomaly or device reboot detected. Resetting baseline to current sensor count: $totalStepsSinceBoot")
+                Log.d("StepService", "Baseline anomaly or device reboot detected. Resetting baseline: $totalStepsSinceBoot")
                 lastSavedSteps = totalStepsSinceBoot
                 serviceScope.launch {
                     database.stepDao().updateSensorValue(SensorMetadata(lastSensorValue = totalStepsSinceBoot))
@@ -133,6 +134,17 @@ class NonGmsStepService : Service(), SensorEventListener {
                 database.stepDao().updateSensorValue(
                     SensorMetadata(lastSensorValue = lastSavedSteps)
                 )
+
+                // Check goal status and dispatch notification if newly achieved
+                val startOfDay = LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+                val todaySteps = database.stepDao().getTodayLocalSteps(startOfDay) ?: 0L
+                val goal = StepGoalPreferences(applicationContext).getStepGoal()
+
+                if (goal in 1..todaySteps && !goalNotifiedToday) {
+                    goalNotifiedToday = true
+                    GoalNotificationHelper.showGoalReachedNotification(applicationContext, todaySteps)
+                }
+
                 Log.d("StepService", "Room persistence execution complete. Saved delta: $delta")
             } catch (e: Exception) {
                 Log.e("StepService", "Room transaction write crash detected", e)
