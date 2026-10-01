@@ -8,6 +8,7 @@ import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.res.Configuration
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
@@ -25,6 +26,8 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -33,6 +36,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -318,96 +322,68 @@ fun PermissionAndDashboardScreen(
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(24.dp, Alignment.CenterVertically)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth().safeDrawingPadding(),
-                horizontalArrangement = Arrangement.End
-            ) {
-                IconButton(onClick = onOpenStepHistory) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_history),
-                        contentDescription = "Step History"
-                    )
-                }
-                IconButton(onClick = onOpenSettings) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_settings),
-                        contentDescription = "Settings"
-                    )
-                }
-            }
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 
-            Column(
+    Box(modifier = Modifier.fillMaxSize()) {
+        if (isLandscape) {
+            Row(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(24.dp, Alignment.CenterVertically)
+                    .padding(horizontal = 24.dp, vertical = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(24.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Material3ExpressiveStepGauge(currentSteps = todaySteps, stepGoal = stepGoal)
-
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                    )
+                // Left Column: Step Gauge
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight(),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(
-                            text = "Health Connect integration",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        if (!hasHealthPermission) {
-                            Text(
-                                text = "Connect this app with Health Connect to share your daily progress safely and securely.",
-                                style = MaterialTheme.typography.bodyMedium,
-                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            ExpressiveButton(
-                                onClick = { healthPermissionLauncher.launch(requiredHealthPermissions) },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text("Link Health Connect")
-                            }
-                        } else {
-                            Text(
-                                text = "Your step data is securely syncing automatically with Android's system health registry.",
-                                style = MaterialTheme.typography.bodyMedium,
-                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            ExpressiveButton(
-                                onClick = {
-                                    onSyncTrigger()
-                                    Toast.makeText(
-                                        context,
-                                        "Steps synced to Health Connect!",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
-                                },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text("Sync data now")
-                            }
-                        }
-                    }
+                    Material3ExpressiveStepGauge(
+                        currentSteps = todaySteps,
+                        stepGoal = stepGoal,
+                        gaugeSize = 220.dp
+                    )
                 }
 
-                if (!hasActivityPermission || !hasNotificationPermission) {
-                    ExpressiveButton(
-                        onClick = {
+                // Right Column: Controls & Information
+                Column(
+                    modifier = Modifier
+                        .weight(1.2f)
+                        .fillMaxHeight()
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        IconButton(onClick = onOpenStepHistory) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_history),
+                                contentDescription = "Step History"
+                            )
+                        }
+                        IconButton(onClick = onOpenSettings) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_settings),
+                                contentDescription = "Settings"
+                            )
+                        }
+                    }
+
+                    HealthConnectCard(
+                        hasHealthPermission = hasHealthPermission,
+                        onRequestPermission = { healthPermissionLauncher.launch(requiredHealthPermissions) },
+                        onSyncTrigger = onSyncTrigger
+                    )
+
+                    PermissionStatusSection(
+                        hasActivityPermission = hasActivityPermission,
+                        hasNotificationPermission = hasNotificationPermission,
+                        onRequestPermissions = {
                             val channel = NotificationChannel(
                                 "non_gms_activity_tracking_channel",
                                 "Activity tracking",
@@ -422,16 +398,79 @@ fun PermissionAndDashboardScreen(
                                     Manifest.permission.POST_NOTIFICATIONS
                                 )
                             )
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                    ) {
-                        Text("Grant required permissions")
+                        }
+                    )
+                }
+            }
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .statusBarsPadding()
+            ) {
+                // Top Action Bar pinned to the top-right corner
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = onOpenStepHistory) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_history),
+                            contentDescription = "Step History"
+                        )
                     }
-                } else {
-                    Text(
-                        text = "Pedometer monitoring active",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.primary
+                    IconButton(onClick = onOpenSettings) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_settings),
+                            contentDescription = "Settings"
+                        )
+                    }
+                }
+
+                // Vertically centered scrollable container for dashboard items
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(20.dp, Alignment.CenterVertically)
+                ) {
+                    Material3ExpressiveStepGauge(
+                        currentSteps = todaySteps,
+                        stepGoal = stepGoal,
+                        gaugeSize = 260.dp
+                    )
+
+                    HealthConnectCard(
+                        hasHealthPermission = hasHealthPermission,
+                        onRequestPermission = { healthPermissionLauncher.launch(requiredHealthPermissions) },
+                        onSyncTrigger = onSyncTrigger
+                    )
+
+                    PermissionStatusSection(
+                        hasActivityPermission = hasActivityPermission,
+                        hasNotificationPermission = hasNotificationPermission,
+                        onRequestPermissions = {
+                            val channel = NotificationChannel(
+                                "non_gms_activity_tracking_channel",
+                                "Activity tracking",
+                                NotificationManager.IMPORTANCE_MIN
+                            )
+                            val manager =
+                                context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                            manager.createNotificationChannel(channel)
+                            systemPermissionLauncher.launch(
+                                arrayOf(
+                                    Manifest.permission.ACTIVITY_RECOGNITION,
+                                    Manifest.permission.POST_NOTIFICATIONS
+                                )
+                            )
+                        }
                     )
                 }
             }
@@ -456,12 +495,90 @@ fun PermissionAndDashboardScreen(
     }
 }
 
+@Composable
+private fun HealthConnectCard(
+    hasHealthPermission: Boolean,
+    onRequestPermission: () -> Unit,
+    onSyncTrigger: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "Health Connect integration",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+
+            if (!hasHealthPermission) {
+                Text(
+                    text = "Connect this app with Health Connect to share your daily progress safely and securely.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                ExpressiveButton(
+                    onClick = onRequestPermission,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Link Health Connect")
+                }
+            } else {
+                Text(
+                    text = "Your step data is securely syncing automatically with Android's system health registry.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                ExpressiveButton(
+                    onClick = onSyncTrigger,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Sync data now")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PermissionStatusSection(
+    hasActivityPermission: Boolean,
+    hasNotificationPermission: Boolean,
+    onRequestPermissions: () -> Unit
+) {
+    if (!hasActivityPermission || !hasNotificationPermission) {
+        ExpressiveButton(
+            onClick = onRequestPermissions,
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Grant required permissions")
+        }
+    } else {
+        Text(
+            text = "Pedometer monitoring active",
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary
+        )
+    }
+}
+
 @SuppressLint("DefaultLocale")
 @Composable
 fun Material3ExpressiveStepGauge(
     currentSteps: Long,
     stepGoal: Long,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    gaugeSize: androidx.compose.ui.unit.Dp = 260.dp
 ) {
     val progress = if (stepGoal > 0) (currentSteps.toFloat() / stepGoal.toFloat()).coerceIn(0f, 1f) else 0f
     val animatedProgress by animateFloatAsState(
@@ -475,15 +592,15 @@ fun Material3ExpressiveStepGauge(
 
     Box(
         modifier = modifier
-            .size(280.dp)
-            .padding(16.dp),
+            .size(gaugeSize)
+            .padding(8.dp),
         contentAlignment = Alignment.Center
     ) {
         val progressColor = MaterialTheme.colorScheme.primary
         val trackColor = MaterialTheme.colorScheme.surfaceVariant
 
         Canvas(modifier = Modifier.fillMaxSize()) {
-            val strokeWidth = 28.dp.toPx()
+            val strokeWidth = (gaugeSize.toPx() * 0.1f)
             val radius = (size.minDimension - strokeWidth) / 2
             val center = Offset(size.width / 2, size.height / 2)
 
@@ -510,18 +627,18 @@ fun Material3ExpressiveStepGauge(
 
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(top = 12.dp)
+            modifier = Modifier.padding(top = 8.dp)
         ) {
             Text(
                 text = String.format("%,d", currentSteps),
-                fontSize = 44.sp,
+                fontSize = if (gaugeSize < 250.dp) 32.sp else 40.sp,
                 fontWeight = FontWeight.ExtraBold,
                 letterSpacing = (-1).sp
             )
             Spacer(modifier = Modifier.height(2.dp))
             Text(
                 text = "of ${String.format("%,d", stepGoal)} steps",
-                fontSize = 15.sp,
+                fontSize = if (gaugeSize < 250.dp) 13.sp else 15.sp,
                 fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
