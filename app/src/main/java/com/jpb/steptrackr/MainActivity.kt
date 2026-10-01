@@ -149,8 +149,11 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                         Screen.StepHistory -> {
                             val historyState by stepHistoryViewModel.uiState.collectAsState()
                             StepHistoryScreen(
+                                historyState = historyState,
                                 onBackClick = { currentScreen = Screen.Dashboard },
-                                historyState = historyState
+                                onTimeFrameSelected = { timeFrame -> stepHistoryViewModel.onTimeFrameSelected(timeFrame) },
+                                onHourlyDateSelected = { date -> stepHistoryViewModel.onHourlyDateSelected(date) },
+                                onDailyRangeSelected = { start, end -> stepHistoryViewModel.onDailyRangeSelected(start, end) }
                             )
                         }
                     }

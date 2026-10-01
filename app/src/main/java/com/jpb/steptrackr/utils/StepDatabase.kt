@@ -64,22 +64,22 @@ interface StepDao {
     fun getTodayLocalStepsFlow(startOfDay: Long): Flow<Long?>
 
     /**
-     * Groups steps by hour for a specific range (e.g., today starting at midnight epoch ms).
-     * SQLite strftime('%H', ...) extracts the 24-hour mark based on local time.
+     * Groups steps by hour for a specific range.
+     * Restricted between startOfDayMs and endOfDayMs to prevent current steps from spilling into historical views.
      */
     @Query("""
         SELECT 
             CAST(strftime('%H', timestamp / 1000, 'unixepoch', 'localtime') AS INTEGER) AS hourOfDay,
             SUM(delta) AS totalSteps
         FROM step_deltas
-        WHERE timestamp >= :startOfDayMs
+        WHERE timestamp >= :startOfDayMs AND timestamp <= :endOfDayMs
         GROUP BY hourOfDay
         ORDER BY hourOfDay ASC
     """)
-    fun getHourlyStepsFlow(startOfDayMs: Long): Flow<List<HourlyStepTuple>>
+    fun getHourlyStepsFlow(startOfDayMs: Long, endOfDayMs: Long): Flow<List<HourlyStepTuple>>
 
     /**
-     * Groups steps by day for a historical date range (e.g., last 7 or 30 days).
+     * Groups steps by day for a historical date range.
      * SQLite strftime('%Y-%m-%d', ...) groups by date.
      */
     @Query("""
@@ -116,14 +116,18 @@ abstract class StepDatabase : RoomDatabase() {
 
 class StepRepository(private val stepDao: StepDao) {
 
-    // Fetch Hourly data for today
-    fun getHourlyStepsForToday(): Flow<List<StepDataPoint>> {
-        val startOfDayMs = LocalDate.now()
-            .atStartOfDay(ZoneId.systemDefault())
-            .toInstant()
-            .toEpochMilli()
-
-        return stepDao.getHourlyStepsFlow(startOfDayMs).map { tuples ->
+    /**
+     * Fetch hourly data strictly for the selected date (00:00:00.000 to 23:59:59.999).
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    fun getHourlyStepsForDate(date: LocalDate): Flow<List<StepDataPoint>> {
+        return stepDao.getAllRecentDeltasFlow().map { _ ->
+            val startOfDayMs = date.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+            val endOfDayMs = date.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli() - 1
+            Pair(startOfDayMs, endOfDayMs)
+        }.flatMapLatest { (startMs, endMs) ->
+            stepDao.getHourlyStepsFlow(startMs, endMs)
+        }.map { tuples ->
             tuples.map { tuple ->
                 val hour = tuple.hourOfDay
                 val label = when {
@@ -136,20 +140,17 @@ class StepRepository(private val stepDao: StepDao) {
             }
         }
     }
-    // Dynamic daily step flow
+
+    /**
+     * Fetch daily data strictly between startDate 00:00:00.000 and endDate 23:59:59.999.
+     */
     @OptIn(ExperimentalCoroutinesApi::class)
-    fun getDailyStepsForPastDays(days: Int = 7): Flow<List<StepDataPoint>> {
-        val dateFormatter = DateTimeFormatter.ofPattern("E") // e.g., "Mon", "Tue"
+    fun getDailyStepsForRange(startDate: LocalDate, endDate: LocalDate): Flow<List<StepDataPoint>> {
+        val dateFormatter = DateTimeFormatter.ofPattern("MMM d")
 
-        // Compute the rolling date range dynamically whenever room updates
         return stepDao.getAllRecentDeltasFlow().map { _ ->
-            val now = LocalDate.now()
-            val startTimeMs = now.minusDays((days - 1).toLong())
-                .atStartOfDay(ZoneId.systemDefault())
-                .toInstant()
-                .toEpochMilli()
-            val endTimeMs = System.currentTimeMillis()
-
+            val startTimeMs = startDate.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+            val endTimeMs = endDate.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli() - 1
             Pair(startTimeMs, endTimeMs)
         }.flatMapLatest { (startTime, endTime) ->
             stepDao.getDailyStepsFlow(startTime, endTime)
