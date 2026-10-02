@@ -47,15 +47,18 @@ import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.PermissionController
 import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.records.StepsRecord
+import androidx.lifecycle.lifecycleScope
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import com.google.android.gms.common.ConnectionResult
 import com.google.android.gms.common.GoogleApiAvailability
 import com.google.android.gms.fitness.FitnessLocal
 import com.google.android.gms.fitness.data.LocalDataType
+import com.jpb.steptrackr.services.HealthConnectRepository
 import com.jpb.steptrackr.ui.ExpressiveButton
 import com.jpb.steptrackr.ui.theme.AppTheme
 import com.jpb.steptrackr.utils.GoalNotificationHelper
+import com.jpb.steptrackr.utils.HistoryTimeFrame
 import com.jpb.steptrackr.utils.SensorMetadata
 import com.jpb.steptrackr.utils.StepDatabase
 import com.jpb.steptrackr.utils.StepDelta
@@ -87,7 +90,11 @@ class MainActivity : ComponentActivity(), SensorEventListener {
     private var isNotificationPermissionGranted = mutableStateOf(false)
 
     private val stepHistoryViewModel: StepHistoryViewModel by viewModels {
-        StepHistoryViewModelFactory(StepRepository(database.stepDao()))
+        val hcClient = HealthConnectClient.getOrCreate(applicationContext)
+        StepHistoryViewModelFactory(
+            repository = StepRepository(database.stepDao()),
+            healthConnectRepository = HealthConnectRepository(hcClient, database.stepDao())
+        )
     }
 
     enum class Screen { Dashboard, Settings, About, StepHistory }
@@ -151,9 +158,21 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                             StepHistoryScreen(
                                 historyState = historyState,
                                 onBackClick = { currentScreen = Screen.Dashboard },
-                                onTimeFrameSelected = { timeFrame -> stepHistoryViewModel.onTimeFrameSelected(timeFrame) },
+                                onTimeFrameSelected = { timeFrame ->
+                                    stepHistoryViewModel.onTimeFrameSelected(timeFrame)
+                                    if (timeFrame == HistoryTimeFrame.HEALTH_CONNECT_HOURLY) {
+                                        lifecycleScope.launch {
+                                            triggerImmediateSync(this@MainActivity)
+                                            // Re-query Health Connect after sync completes
+                                            stepHistoryViewModel.refreshHealthConnectData()
+                                        }
+                                    }
+                                },
                                 onHourlyDateSelected = { date -> stepHistoryViewModel.onHourlyDateSelected(date) },
-                                onDailyRangeSelected = { start, end -> stepHistoryViewModel.onDailyRangeSelected(start, end) }
+                                onDailyRangeSelected = { start, end -> stepHistoryViewModel.onDailyRangeSelected(start, end) },
+                                onHealthConnectDateAndHourSelected = { date, hour ->
+                                    stepHistoryViewModel.onHealthConnectDateAndHourSelected(date, hour)
+                                }
                             )
                         }
                     }
@@ -299,7 +318,10 @@ fun PermissionAndDashboardScreen(
 
     var hasHealthPermission by remember { mutableStateOf(false) }
     val requiredHealthPermissions = remember {
-        setOf(HealthPermission.getWritePermission(StepsRecord::class))
+        setOf(
+            HealthPermission.getReadPermission(StepsRecord::class),
+            HealthPermission.getWritePermission(StepsRecord::class)
+        )
     }
 
     val healthPermissionLauncher = rememberLauncherForActivityResult(

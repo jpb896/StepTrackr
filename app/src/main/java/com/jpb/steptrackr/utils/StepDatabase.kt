@@ -92,6 +92,12 @@ interface StepDao {
         ORDER BY dateString ASC
     """)
     fun getDailyStepsFlow(startTimeMs: Long, endTimeMs: Long): Flow<List<DailyStepTuple>>
+
+    @Query("""
+    SELECT * FROM step_deltas 
+    WHERE timestamp >= :startTimeMs AND timestamp <= :endTimeMs
+""")
+    suspend fun getDeltasForRange(startTimeMs: Long, endTimeMs: Long): List<StepDelta>
 }
 
 @Database(entities = [StepDelta::class, SensorMetadata::class], version = 1, exportSchema = false)

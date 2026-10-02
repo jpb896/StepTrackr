@@ -6,7 +6,11 @@
     <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
 
     <!-- Required to write data to Health Connect -->
+    <uses-permission android:name="android.permission.health.READ_STEPS"
+        tools:ignore="HealthConnectPolicy" />
     <uses-permission android:name="android.permission.health.WRITE_STEPS"
+        tools:ignore="HealthConnectPolicy" />
+    <uses-permission android:name="android.permission.health.READ_HEALTH_DATA_HISTORY"
         tools:ignore="HealthConnectPolicy" />
 
     <!-- Required for Android 14+ Foreground Services -->

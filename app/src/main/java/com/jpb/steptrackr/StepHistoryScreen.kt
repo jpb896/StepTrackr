@@ -20,6 +20,7 @@ import java.time.ZoneId
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StepHistoryScreen(
     historyState: StepHistoryState,
@@ -27,6 +28,7 @@ fun StepHistoryScreen(
     onTimeFrameSelected: (HistoryTimeFrame) -> Unit,
     onHourlyDateSelected: (LocalDate) -> Unit,
     onDailyRangeSelected: (LocalDate, LocalDate) -> Unit,
+    onHealthConnectDateAndHourSelected: (LocalDate, Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val today = remember { LocalDate.now() }
@@ -34,11 +36,10 @@ fun StepHistoryScreen(
     var customStartDate by remember { mutableStateOf(today.minusDays(6)) }
     var customEndDate by remember { mutableStateOf(today) }
 
-    // Use the active dataset from historyState directly
-    val currentData = if (historyState.selectedTimeFrame == HistoryTimeFrame.HOURLY) {
-        historyState.hourlyData
-    } else {
-        historyState.dailyData
+    val currentData = when (historyState.selectedTimeFrame) {
+        HistoryTimeFrame.HOURLY -> historyState.hourlyData
+        HistoryTimeFrame.DAILY -> historyState.dailyData
+        HistoryTimeFrame.HEALTH_CONNECT_HOURLY -> historyState.healthConnectData
     }
 
     val totalSteps: Long = currentData.sumOf { it.steps.toLong() }
@@ -97,13 +98,16 @@ fun StepHistoryScreen(
                             customStartDate = start
                             customEndDate = end
                             onDailyRangeSelected(start, end)
-                        }
+                        },
+                        hcDate = historyState.selectedHealthConnectDate,
+                        hcHour = historyState.selectedHealthConnectHour,
+                        onHcSelected = onHealthConnectDateAndHourSelected
                     )
 
                     SummaryCard(
                         totalSteps = totalSteps,
                         averageSteps = averageSteps,
-                        isHourly = historyState.selectedTimeFrame == HistoryTimeFrame.HOURLY
+                        timeFrame = historyState.selectedTimeFrame
                     )
                 }
 
@@ -115,7 +119,11 @@ fun StepHistoryScreen(
                 ) {
                     StepsBarChart(
                         stepData = currentData,
-                        dailyGoal = if (historyState.selectedTimeFrame == HistoryTimeFrame.HOURLY) 2000 else 10000,
+                        dailyGoal = when (historyState.selectedTimeFrame) {
+                            HistoryTimeFrame.HOURLY -> 2000
+                            HistoryTimeFrame.HEALTH_CONNECT_HOURLY -> 500
+                            HistoryTimeFrame.DAILY -> 10000
+                        },
                         modifier = Modifier.fillMaxSize()
                     )
                 }
@@ -143,18 +151,25 @@ fun StepHistoryScreen(
                         customStartDate = start
                         customEndDate = end
                         onDailyRangeSelected(start, end)
-                    }
+                    },
+                    hcDate = historyState.selectedHealthConnectDate,
+                    hcHour = historyState.selectedHealthConnectHour,
+                    onHcSelected = onHealthConnectDateAndHourSelected
                 )
 
                 SummaryCard(
                     totalSteps = totalSteps,
                     averageSteps = averageSteps,
-                    isHourly = historyState.selectedTimeFrame == HistoryTimeFrame.HOURLY
+                    timeFrame = historyState.selectedTimeFrame
                 )
 
                 StepsBarChart(
                     stepData = currentData,
-                    dailyGoal = if (historyState.selectedTimeFrame == HistoryTimeFrame.HOURLY) 2000 else 10000,
+                    dailyGoal = when (historyState.selectedTimeFrame) {
+                        HistoryTimeFrame.HOURLY -> 2000
+                        HistoryTimeFrame.HEALTH_CONNECT_HOURLY -> 500
+                        HistoryTimeFrame.DAILY -> 10000
+                    },
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -173,16 +188,23 @@ private fun TimeFrameSelector(
         SegmentedButton(
             selected = selectedTimeFrame == HistoryTimeFrame.HOURLY,
             onClick = { onTimeFrameSelected(HistoryTimeFrame.HOURLY) },
-            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2)
+            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3)
         ) {
             Text("Hourly")
         }
         SegmentedButton(
             selected = selectedTimeFrame == HistoryTimeFrame.DAILY,
             onClick = { onTimeFrameSelected(HistoryTimeFrame.DAILY) },
-            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2)
+            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3)
         ) {
             Text("Daily")
+        }
+        SegmentedButton(
+            selected = selectedTimeFrame == HistoryTimeFrame.HEALTH_CONNECT_HOURLY,
+            onClick = { onTimeFrameSelected(HistoryTimeFrame.HEALTH_CONNECT_HOURLY) },
+            shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3)
+        ) {
+            Text("HC 10m")
         }
     }
 }
@@ -195,10 +217,15 @@ private fun GraphConfigControls(
     onDateSelected: (LocalDate) -> Unit,
     startDate: LocalDate,
     endDate: LocalDate,
-    onRangeSelected: (LocalDate, LocalDate) -> Unit
+    onRangeSelected: (LocalDate, LocalDate) -> Unit,
+    hcDate: LocalDate,
+    hcHour: Int,
+    onHcSelected: (LocalDate, Int) -> Unit
 ) {
     var showSingleDatePicker by remember { mutableStateOf(false) }
     var showDateRangePicker by remember { mutableStateOf(false) }
+    var showHcDatePicker by remember { mutableStateOf(false) }
+    var hcHourMenuExpanded by remember { mutableStateOf(false) }
 
     val formatter = remember { DateTimeFormatter.ofPattern("MMM d") }
 
@@ -215,34 +242,67 @@ private fun GraphConfigControls(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            if (selectedTimeFrame == HistoryTimeFrame.HOURLY) {
-                Text(
-                    text = selectedDate.format(formatter),
-                    style = MaterialTheme.typography.labelLarge
-                )
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    FilterChip(
-                        selected = selectedDate == LocalDate.now(),
-                        onClick = { onDateSelected(LocalDate.now()) },
-                        label = { Text("Today") }
+            when (selectedTimeFrame) {
+                HistoryTimeFrame.HOURLY -> {
+                    Text(
+                        text = selectedDate.format(formatter),
+                        style = MaterialTheme.typography.labelLarge
                     )
-                    OutlinedButton(onClick = { showSingleDatePicker = true }) {
-                        Text("Custom Date")
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        FilterChip(
+                            selected = selectedDate == LocalDate.now(),
+                            onClick = { onDateSelected(LocalDate.now()) },
+                            label = { Text("Today") }
+                        )
+                        OutlinedButton(onClick = { showSingleDatePicker = true }) {
+                            Text("Custom Date")
+                        }
                     }
                 }
-            } else {
-                Text(
-                    text = "${startDate.format(formatter)} - ${endDate.format(formatter)}",
-                    style = MaterialTheme.typography.labelLarge
-                )
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    FilterChip(
-                        selected = startDate == LocalDate.now().minusDays(6) && endDate == LocalDate.now(),
-                        onClick = { onRangeSelected(LocalDate.now().minusDays(6), LocalDate.now()) },
-                        label = { Text("Last 7d") }
+                HistoryTimeFrame.DAILY -> {
+                    Text(
+                        text = "${startDate.format(formatter)} - ${endDate.format(formatter)}",
+                        style = MaterialTheme.typography.labelLarge
                     )
-                    OutlinedButton(onClick = { showDateRangePicker = true }) {
-                        Text("Custom Range")
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        FilterChip(
+                            selected = startDate == LocalDate.now().minusDays(6) && endDate == LocalDate.now(),
+                            onClick = { onRangeSelected(LocalDate.now().minusDays(6), LocalDate.now()) },
+                            label = { Text("Last 7d") }
+                        )
+                        OutlinedButton(onClick = { showDateRangePicker = true }) {
+                            Text("Custom Range")
+                        }
+                    }
+                }
+                HistoryTimeFrame.HEALTH_CONNECT_HOURLY -> {
+                    Text(
+                        text = "${hcDate.format(formatter)} @ ${String.format("%02d:00", hcHour)}",
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        OutlinedButton(onClick = { showHcDatePicker = true }) {
+                            Text("Date")
+                        }
+                        Box {
+                            OutlinedButton(onClick = { hcHourMenuExpanded = true }) {
+                                Text("${String.format("%02d:00", hcHour)}")
+                            }
+                            DropdownMenu(
+                                expanded = hcHourMenuExpanded,
+                                onDismissRequest = { hcHourMenuExpanded = false }
+                            ) {
+                                (0..23).forEach { hour ->
+                                    DropdownMenuItem(
+                                        text = { Text(String.format("%02d:00", hour)) },
+                                        onClick = {
+                                            hcHourMenuExpanded = false
+                                            onHcSelected(hcDate, hour)
+                                        }
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -258,24 +318,37 @@ private fun GraphConfigControls(
             confirmButton = {
                 TextButton(onClick = {
                     datePickerState.selectedDateMillis?.let { millis ->
-                        val pickedDate = Instant.ofEpochMilli(millis)
-                            .atZone(ZoneId.of("UTC"))
-                            .toLocalDate()
+                        val pickedDate = Instant.ofEpochMilli(millis).atZone(ZoneId.of("UTC")).toLocalDate()
                         onDateSelected(pickedDate)
                     }
                     showSingleDatePicker = false
-                }) {
-                    Text("OK")
-                }
+                }) { Text("OK") }
             },
             dismissButton = {
-                TextButton(onClick = { showSingleDatePicker = false }) {
-                    Text("Cancel")
-                }
+                TextButton(onClick = { showSingleDatePicker = false }) { Text("Cancel") }
             }
-        ) {
-            DatePicker(state = datePickerState)
-        }
+        ) { DatePicker(state = datePickerState) }
+    }
+
+    if (showHcDatePicker) {
+        val hcDatePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = hcDate.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+        )
+        DatePickerDialog(
+            onDismissRequest = { showHcDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    hcDatePickerState.selectedDateMillis?.let { millis ->
+                        val pickedDate = Instant.ofEpochMilli(millis).atZone(ZoneId.of("UTC")).toLocalDate()
+                        onHcSelected(pickedDate, hcHour)
+                    }
+                    showHcDatePicker = false
+                }) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showHcDatePicker = false }) { Text("Cancel") }
+            }
+        ) { DatePicker(state = hcDatePickerState) }
     }
 
     if (showDateRangePicker) {
@@ -290,27 +363,17 @@ private fun GraphConfigControls(
                     val startMillis = dateRangePickerState.selectedStartDateMillis
                     val endMillis = dateRangePickerState.selectedEndDateMillis
                     if (startMillis != null && endMillis != null) {
-                        val pickedStart = Instant.ofEpochMilli(startMillis)
-                            .atZone(ZoneId.of("UTC"))
-                            .toLocalDate()
-                        val pickedEnd = Instant.ofEpochMilli(endMillis)
-                            .atZone(ZoneId.of("UTC"))
-                            .toLocalDate()
+                        val pickedStart = Instant.ofEpochMilli(startMillis).atZone(ZoneId.of("UTC")).toLocalDate()
+                        val pickedEnd = Instant.ofEpochMilli(endMillis).atZone(ZoneId.of("UTC")).toLocalDate()
                         onRangeSelected(pickedStart, pickedEnd)
                     }
                     showDateRangePicker = false
-                }) {
-                    Text("OK")
-                }
+                }) { Text("OK") }
             },
             dismissButton = {
-                TextButton(onClick = { showDateRangePicker = false }) {
-                    Text("Cancel")
-                }
+                TextButton(onClick = { showDateRangePicker = false }) { Text("Cancel") }
             }
-        ) {
-            DateRangePicker(state = dateRangePickerState)
-        }
+        ) { DateRangePicker(state = dateRangePickerState) }
     }
 }
 
@@ -318,13 +381,11 @@ private fun GraphConfigControls(
 private fun SummaryCard(
     totalSteps: Long,
     averageSteps: Long,
-    isHourly: Boolean
+    timeFrame: HistoryTimeFrame
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainer
-        )
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
     ) {
         Row(
             modifier = Modifier
@@ -345,7 +406,11 @@ private fun SummaryCard(
             }
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
-                    text = if (isHourly) "Avg/hr" else "Avg/day",
+                    text = when (timeFrame) {
+                        HistoryTimeFrame.HOURLY -> "Avg/hr"
+                        HistoryTimeFrame.DAILY -> "Avg/day"
+                        HistoryTimeFrame.HEALTH_CONNECT_HOURLY -> "Avg/10m"
+                    },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
