@@ -18,7 +18,7 @@
     <string name="stepgoal_notification_title">Goal achieved! 🎉</string>
     <string name="stepgoal_notification_subtitle">Congratulations! You\'ve reached your goal of %1$d steps today.</string>
     <string name="about">About</string>
-    <string name="version">Version 1.2</string>
+    <string name="version">Version 2.0</string>
     <string name="aboutapp_card_title">About the app</string>
     <string name="aboutapp_card_description">StepTrackr is a lightweight, privacy-focused step tracking/pedometer app designed for Android devices. It utilizes on-device hardware sensors for step counting and seamlessly syncs with Health Connect, but can use Google Mobile Services APIs (specifically Play Services\' Fitness API) for seamless integration with GMS.</string>
     <string name="key_features">Key features</string>

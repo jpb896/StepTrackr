@@ -23,7 +23,7 @@
     <string name="stepgoal_notification_title">Cel osiągnięty! 🎉</string>
     <string name="stepgoal_notification_subtitle">Gratulacje! Osiągnięto dzisiejszy cel: %1$d kroków.</string>
     <string name="about">O aplikacji</string>
-    <string name="version">wersja 1.2</string>
+    <string name="version">wersja 2.0</string>
     <string name="aboutapp_card_title">O aplikacji</string>
     <string name="aboutapp_card_description">StepTrackr jest lekką aplikacją, zkonstruowaną dla Android\'a, która szanuje Twoją prywatność i pozwala Ci sprawdzić swój numer kroków. Używa sensory fizyczne żeby zbierać dane i synchronizuje sie z Health Connect, ale też może użyć API Google Mobile Services (sczególnie Fitness API Usług Play), żeby zapewnić integrację z GMS.</string>
     <string name="key_features">Główne funkcje</string>
