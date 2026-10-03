@@ -211,6 +211,14 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         }
     }
 
+    override fun onPause() {
+        super.onPause()
+        if (isActivityPermissionGranted.value) {
+            sensorManager?.unregisterListener(this)
+            triggerImmediateSync(this)
+        }
+    }
+
     private fun updatePermissionStates() {
         isActivityPermissionGranted.value = ContextCompat.checkSelfPermission(
             this,
@@ -248,13 +256,6 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                 .addOnFailureListener { e ->
                     Log.e("GMS", "Failed to subscribe to GMS step recording", e)
                 }
-        }
-    }
-
-    override fun onPause() {
-        super.onPause()
-        if (isActivityPermissionGranted.value) {
-            sensorManager?.unregisterListener(this)
         }
     }
 
