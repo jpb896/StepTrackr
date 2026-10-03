@@ -59,6 +59,7 @@ import com.jpb.steptrackr.services.HealthConnectRepository
 import com.jpb.steptrackr.ui.AlternativeDashboardScreen
 import com.jpb.steptrackr.ui.ExpressiveButton
 import com.jpb.steptrackr.ui.theme.AppTheme
+import com.jpb.steptrackr.utils.AppLocaleManager
 import com.jpb.steptrackr.utils.DashboardLayout
 import com.jpb.steptrackr.utils.GoalNotificationHelper
 import com.jpb.steptrackr.utils.HistoryTimeFrame
@@ -301,6 +302,15 @@ class MainActivity : ComponentActivity(), SensorEventListener {
     private fun triggerImmediateSync(context: Context) {
         val syncWorkRequest = OneTimeWorkRequestBuilder<com.jpb.steptrackr.services.HealthSyncWorker>().build()
         WorkManager.getInstance(context.applicationContext).enqueue(syncWorkRequest)
+    }
+
+    override fun attachBaseContext(newBase: Context) {
+        val currentLang = AppLocaleManager.getCurrentLanguage(newBase)
+        val locale = java.util.Locale.forLanguageTag(currentLang)
+        val config = newBase.resources.configuration
+        config.setLocale(locale)
+        val localizedContext = newBase.createConfigurationContext(config)
+        super.attachBaseContext(localizedContext)
     }
 }
 
