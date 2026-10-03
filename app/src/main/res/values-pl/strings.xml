@@ -21,13 +21,7 @@
     <string name="stepgoal_notification_channel_title">Cel kroków</string>
     <string name="stepgoal_notification_channel_description">Notifications when you reach your daily step goal</string>
     <string name="stepgoal_notification_title">Cel osiągnięty! 🎉</string>
-    <string name="stepgoal_notification_subtitle">
-        {gender, select,
-            female {Gratulacje! Osiągnełaś swój dzisiejszy cel: $totalSteps kroków.}
-            male {Gratulacje! Osiągnąłeś swój dzisiejszy cel: $totalSteps kroków.}
-            other {Gratulacje! Osiągnąłeś swój dzisiejszy cel: $totalSteps kroków.}
-        }
-    </string>
+    <string name="stepgoal_notification_subtitle">Gratulacje! Osiągnięto dzisiejszy cel: %1$d kroków.</string>
     <string name="about">O aplikacji</string>
     <string name="version">wersja 1.2</string>
     <string name="aboutapp_card_title">O aplikacji</string>

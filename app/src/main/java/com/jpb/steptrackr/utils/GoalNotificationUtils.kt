@@ -24,11 +24,10 @@ object GoalNotificationHelper {
 
     fun showGoalReachedNotification(context: Context, totalSteps: Long) {
         createNotificationChannel(context)
-
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_foreground) // Use your app icon
             .setContentTitle(context.getString(R.string.stepgoal_notification_title))
-            .setContentText(context.getString(R.string.stepgoal_notification_subtitle))
+            .setContentText(context.getString(R.string.stepgoal_notification_subtitle, totalSteps))
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setAutoCancel(true)
 

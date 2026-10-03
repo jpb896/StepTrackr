@@ -16,7 +16,7 @@
     <string name="stepgoal_notification_channel_title">Step goal</string>
     <string name="stepgoal_notification_channel_description">Notifications when you reach your daily step goal</string>
     <string name="stepgoal_notification_title">Goal achieved! 🎉</string>
-    <string name="stepgoal_notification_subtitle">Congratulations! You\'ve reached your goal of $totalSteps steps today.</string>
+    <string name="stepgoal_notification_subtitle">Congratulations! You\'ve reached your goal of %1$d steps today.</string>
     <string name="about">About</string>
     <string name="version">Version 1.2</string>
     <string name="aboutapp_card_title">About the app</string>
