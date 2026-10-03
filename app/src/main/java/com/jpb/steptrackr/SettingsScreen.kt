@@ -86,7 +86,7 @@ fun SettingsScreen(
                                 goalPrefs.setStepGoal(goal)
                                 isError = false
                             },
-                            label = { Text(stringResource(R.string.goal_thousand, goal/1000)) }
+                            label = { Text(stringResource(R.string.goal_thousand, goal / 1000)) }
                         )
                     }
                 }
@@ -167,7 +167,15 @@ fun SettingsScreen(
                 }
             }
 
-            var currentLanguage by remember { mutableStateOf(AppLocaleManager.getCurrentLanguage(context)) }
+            var currentLanguage by remember {
+                mutableStateOf(
+                    AppLocaleManager.getCurrentLanguage(
+                        context
+                    )
+                )
+            }
+
+            var selectedGender by remember { mutableStateOf(goalPrefs.getUserGender()) }
 
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -200,6 +208,57 @@ fun SettingsScreen(
                             },
                             label = { Text("Polski") }
                         )
+                    }
+                }
+            }
+            if (currentLanguage != "en") {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Text(
+                            text = stringResource(R.string.grammatical_gender_title),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            FilterChip(
+                                selected = selectedGender == StepGoalPreferences.UserGender.FEMALE,
+                                onClick = {
+                                    selectedGender = StepGoalPreferences.UserGender.FEMALE
+                                    goalPrefs.setUserGender(StepGoalPreferences.UserGender.FEMALE)
+                                },
+                                label = { Text(stringResource(R.string.gender_female)) }
+                            )
+
+                            FilterChip(
+                                selected = selectedGender == StepGoalPreferences.UserGender.MALE,
+                                onClick = {
+                                    selectedGender = StepGoalPreferences.UserGender.MALE
+                                    goalPrefs.setUserGender(StepGoalPreferences.UserGender.MALE)
+                                },
+                                label = { Text(stringResource(R.string.gender_male)) }
+                            )
+
+                            FilterChip(
+                                selected = selectedGender == StepGoalPreferences.UserGender.OTHER,
+                                onClick = {
+                                    selectedGender = StepGoalPreferences.UserGender.OTHER
+                                    goalPrefs.setUserGender(StepGoalPreferences.UserGender.OTHER)
+                                },
+                                label = { Text(stringResource(R.string.gender_other)) }
+                            )
+                        }
                     }
                 }
             }

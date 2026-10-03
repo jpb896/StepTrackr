@@ -10,16 +10,23 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.jpb.steptrackr.R
+import com.jpb.steptrackr.utils.AppLocaleManager
+import com.jpb.steptrackr.utils.StepGoalPreferences
+import com.jpb.steptrackr.utils.icuStringResource
 import java.time.LocalTime
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -31,6 +38,7 @@ fun AlternativeDashboardScreen(
     onNavigateToHistory: () -> Unit,
     onMenuClick: () -> Unit,
     onSettingsClick: () -> Unit,
+    goalPrefs: StepGoalPreferences,
     modifier: Modifier = Modifier
 ) {
     val greeting = when (LocalTime.now().hour) {
@@ -38,6 +46,13 @@ fun AlternativeDashboardScreen(
         in 12..16 -> stringResource(R.string.afternoon_greeting)
         else -> stringResource(R.string.evening_greeting)
     }
+
+    val context = LocalContext.current
+    var currentLanguage by remember {
+        mutableStateOf(AppLocaleManager.getCurrentLanguage(context))
+    }
+
+    val currentGender = remember(goalPrefs) { goalPrefs.getUserGender().value }
 
     // Dynamic Material You Theme Color Mapping
     val containerBg = MaterialTheme.colorScheme.surface
@@ -203,12 +218,26 @@ fun AlternativeDashboardScreen(
                             tint = actionCardOnColor,
                             modifier = Modifier.size(24.dp)
                         )
-                        Text(
-                            text = stringResource(R.string.where_youve_been),
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = actionCardOnColor
-                        )
+                        if (currentLanguage == "en") {
+                            Text(
+                                text = stringResource(R.string.where_youve_been),
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = actionCardOnColor
+                            )
+                        } else {
+                            val currentGender = remember { goalPrefs.getUserGender().value }
+
+                            Text(
+                                text = icuStringResource(
+                                    id = R.string.where_youve_been,
+                                    args = mapOf("gender" to currentGender)
+                                ),
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = actionCardOnColor
+                            )
+                        }
                     }
                     Icon(
                         painter = painterResource(R.drawable.ic_arrow_forward),

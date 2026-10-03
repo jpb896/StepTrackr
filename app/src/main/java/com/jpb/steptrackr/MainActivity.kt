@@ -142,7 +142,8 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                                     onNavigateToMap = { /* Optional map navigation action */ },
                                     onNavigateToHistory = { currentScreen = Screen.StepHistory },
                                     onMenuClick = { currentScreen = Screen.Settings },
-                                    onSettingsClick = { currentScreen = Screen.Settings }
+                                    onSettingsClick = { currentScreen = Screen.Settings },
+                                    goalPrefs = goalPrefs
                                 )
                             } else {
                                 PermissionAndDashboardScreen(

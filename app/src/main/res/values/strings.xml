@@ -66,5 +66,9 @@ Licensed under the Apache License 2.0</string>
     <string name="daily_average">Avg/day</string>
     <string name="ten_min_average">Avg/10m</string>
     <string name="language_selection">App language</string>
+    <string name="grammatical_gender_title">Choose your preferred gender</string>
+    <string name="gender_female">Female</string>
+    <string name="gender_male">Male</string>
+    <string name="gender_other">Non-binary or other (neuter grammatical gender)</string>
 
 </resources>

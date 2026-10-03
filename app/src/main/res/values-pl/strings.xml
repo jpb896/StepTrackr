@@ -77,5 +77,9 @@
     <string name="daily_average">Średnia/dzień</string>
     <string name="ten_min_average">Średnia/10min</string>
     <string name="language_selection">Język</string>
+    <string name="grammatical_gender_title">Wybierz swoją płeć</string>
+    <string name="gender_female">Żeńska</string>
+    <string name="gender_male">Męska</string>
+    <string name="gender_other">Osoba niebinarna albo inna płeć (rodzaj gramatyczny nijaki)</string>
 
 </resources>

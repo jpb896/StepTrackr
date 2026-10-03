@@ -38,4 +38,20 @@ class StepGoalPreferences(context: Context) {
     fun setDashboardLayout(layout: DashboardLayout) {
         prefs.edit { putString(KEY_DASHBOARD_LAYOUT, layout.name) }
     }
+
+    enum class UserGender(val value: String) {
+        FEMALE("female"),
+        MALE("male"),
+        OTHER("other")
+    }
+
+    // In StepGoalPreferences.kt:
+    fun getUserGender(): UserGender {
+        val saved = prefs.getString("user_gender", UserGender.OTHER.name)
+        return try { UserGender.valueOf(saved!!) } catch (e: Exception) { UserGender.OTHER }
+    }
+
+    fun setUserGender(gender: UserGender) {
+        prefs.edit { putString("user_gender", gender.name) }
+    }
 }
