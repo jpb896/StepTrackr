@@ -1,3 +1,70 @@
 <resources>
-    <string name="app_name">StepTrackr</string>
+    <string name="app_name" translatable="false">StepTrackr</string>
+    <string name="steptracking_notification_title">Tracking steps</string>
+    <string name="steptracking_notification_subtitle">Currently using the pedometer (step sensor) to track step count</string>
+    <string name="steptracking_notification_channel">Activity tracking</string>
+    <string name="morning_greeting">Good morning! 👋</string>
+    <string name="afternoon_greeting">Good afternoon! 👋</string>
+    <string name="evening_greeting">Good evening! 👋</string>
+    <string name="todays_progress">TODAY\'S PROGRESS</string>
+    <string name="step_goal_main_display">of %1$d steps</string>
+    <string name="step_goal_main_display_variant">out of %1$d steps</string>
+    <string name="your_movement">Your movement</string>
+    <string name="where_youve_been">Where you’ve been</string>
+    <string name="your_walking_statistics">Your walking statistics</string>
+    <string name="steps_over_time">Steps over time</string>
+    <string name="stepgoal_notification_channel_title">Step goal</string>
+    <string name="stepgoal_notification_channel_description">Notifications when you reach your daily step goal</string>
+    <string name="stepgoal_notification_title">Goal achieved! 🎉</string>
+    <string name="stepgoal_notification_subtitle">Congratulations! You\'ve reached your goal of $totalSteps steps today.</string>
+    <string name="about">About</string>
+    <string name="version">Version 1.2</string>
+    <string name="aboutapp_card_title">About the app</string>
+    <string name="aboutapp_card_description">StepTrackr is a lightweight, privacy-focused step tracking/pedometer app designed for Android devices. It utilizes on-device hardware sensors for step counting and seamlessly syncs with Health Connect, but can use Google Mobile Services APIs (specifically Play Services\' Fitness API) for seamless integration with GMS.</string>
+    <string name="key_features">Key features</string>
+    <string name="nongms_card_title">Non-GMS step tracking</string>
+    <string name="nongms_card_description">Runs directly on local device sensors using a foreground service.</string>
+    <string name="gms_card_title">GMS step tracking</string>
+    <string name="gms_card_description">The app can use GMS Health APIs if available to allow for a more seamless experience on GMS devices.</string>
+    <string name="hc_card_title">Health Connect integration</string>
+    <string name="hc_card_description">Syncs background steps directly to your central health dashboard.</string>
+    <string name="m3e_card_title">Material 3 Expressive UI</string>
+    <string name="m3e_card_description">Built with modern Jetpack Compose components and animations.</string>
+    <string name="attribution">Built with Jetpack Compose &amp; Kotlin
+© 2026 jpb
+Licensed under the Apache License 2.0</string>
+    <string name="manualsync_text">Steps synced to Health Connect!</string>
+    <string name="hc_connection_notice">Connect this app with Health Connect to share your daily progress safely and securely.</string>
+    <string name="hc_sync_notice">Your step data is securely syncing automatically with Android\'s system health registry.</string>
+    <string name="hc_link_button">Link Health Connect</string>
+    <string name="hc_synchronize_now">Sync data now</string>
+    <string name="grant_perms_button">Grant required permissions</string>
+    <string name="pedometer_monitoring_active">Pedometer monitoring active</string>
+    <string name="settings">Settings</string>
+    <string name="daily_target_title">Daily step target</string>
+    <string name="preset_targets">Preset targets</string>
+    <string name="goal_thousand">%1$dk</string>
+    <string name="custom_target">Custom target</string>
+    <string name="custom_target_validation">Please enter a valid step count (e.g., 8000)</string>
+    <string name="homepage_layout">Home page layout</string>
+    <string name="homepage_layout_subtitle">Choose your preferred home screen style</string>
+    <string name="default_homepage">Default (prominent gauge)</string>
+    <string name="card_homepage">Card-based UI (prominent actions)</string>
+    <string name="appinfo">App info</string>
+    <string name="aboutapp">About StepTrackr</string>
+    <string name="stephistory">Step history</string>
+    <string name="hourly">Hourly</string>
+    <string name="daily">Daily</string>
+    <string name="today">Today</string>
+    <string name="custom_date">Custom date</string>
+    <string name="pastweek">Last 7d</string>
+    <string name="custom_range">Custom range</string>
+    <string name="date">Date</string>
+    <string name="cancel">Cancel</string>
+    <string name="total_steps">Total steps</string>
+    <string name="hourly_average">Avg/hr</string>
+    <string name="daily_average">Avg/day</string>
+    <string name="ten_min_average">Avg/10m</string>
+    <string name="language_selection">App language</string>
+
 </resources>

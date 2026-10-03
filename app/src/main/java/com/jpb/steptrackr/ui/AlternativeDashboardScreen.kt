@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -33,9 +34,9 @@ fun AlternativeDashboardScreen(
     modifier: Modifier = Modifier
 ) {
     val greeting = when (LocalTime.now().hour) {
-        in 0..11 -> "Good morning! 👋"
-        in 12..16 -> "Good afternoon! 👋"
-        else -> "Good evening! 👋"
+        in 0..11 -> stringResource(R.string.morning_greeting)
+        in 12..16 -> stringResource(R.string.afternoon_greeting)
+        else -> stringResource(R.string.evening_greeting)
     }
 
     // Dynamic Material You Theme Color Mapping
@@ -54,7 +55,7 @@ fun AlternativeDashboardScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "StepTrackr",
+                        text = stringResource(R.string.app_name),
                         style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
                     )
                 },
@@ -110,7 +111,7 @@ fun AlternativeDashboardScreen(
                 ) {
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(
-                            text = "TODAY'S PROGRESS",
+                            text = stringResource(R.string.todays_progress),
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
                             color = mainCardOnColor.copy(alpha = 0.7f)
@@ -122,7 +123,7 @@ fun AlternativeDashboardScreen(
                             color = mainCardOnColor
                         )
                         Text(
-                            text = "out of %,d steps".format(dailyGoal),
+                            text = stringResource(R.string.step_goal_main_display_variant, dailyGoal),
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Medium,
                             color = mainCardOnColor.copy(alpha = 0.8f)
@@ -172,7 +173,7 @@ fun AlternativeDashboardScreen(
 
             // Section Label
             Text(
-                text = "Your movement",
+                text = stringResource(R.string.your_movement),
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
@@ -203,7 +204,7 @@ fun AlternativeDashboardScreen(
                             modifier = Modifier.size(24.dp)
                         )
                         Text(
-                            text = "Where you’ve been",
+                            text = stringResource(R.string.where_youve_been),
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Medium,
                             color = actionCardOnColor
@@ -242,7 +243,7 @@ fun AlternativeDashboardScreen(
                             modifier = Modifier.size(24.dp)
                         )
                         Text(
-                            text = "Your walking statistics",
+                            text = stringResource(R.string.your_walking_statistics),
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Medium,
                             color = actionCardOnColor

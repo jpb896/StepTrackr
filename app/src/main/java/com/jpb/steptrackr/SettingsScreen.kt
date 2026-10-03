@@ -10,10 +10,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.jpb.steptrackr.ui.ExpressiveButton
+import com.jpb.steptrackr.utils.AppLocaleManager
 import com.jpb.steptrackr.utils.DashboardLayout
 import com.jpb.steptrackr.utils.StepGoalPreferences
 
@@ -35,7 +37,7 @@ fun SettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Settings") },
+                title = { Text(stringResource(R.string.settings)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
@@ -57,7 +59,7 @@ fun SettingsScreen(
         ) {
             // Step target configuration section
             Text(
-                text = "Daily step target",
+                text = stringResource(R.string.daily_target_title),
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.SemiBold
@@ -66,7 +68,7 @@ fun SettingsScreen(
             // Quick Select Chips - for selecting a preset step target
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    text = "Preset targets",
+                    text = stringResource(R.string.preset_targets),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -84,7 +86,7 @@ fun SettingsScreen(
                                 goalPrefs.setStepGoal(goal)
                                 isError = false
                             },
-                            label = { Text("${goal / 1000}k") }
+                            label = { Text(stringResource(R.string.goal_thousand, goal/1000)) }
                         )
                     }
                 }
@@ -104,11 +106,11 @@ fun SettingsScreen(
                         isError = true
                     }
                 },
-                label = { Text("Custom target") },
+                label = { Text(stringResource(R.string.custom_target)) },
                 isError = isError,
                 supportingText = {
                     if (isError) {
-                        Text("Please enter a valid step count (e.g., 8000)")
+                        Text(stringResource(R.string.custom_target_validation))
                     }
                 },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -120,7 +122,7 @@ fun SettingsScreen(
 
             // Homepage Layout Selector Section
             Text(
-                text = "Home page layout",
+                text = stringResource(R.string.homepage_layout),
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.SemiBold
@@ -135,7 +137,7 @@ fun SettingsScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text(
-                        text = "Choose your preferred home screen style",
+                        text = stringResource(R.string.homepage_layout_subtitle),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -149,7 +151,7 @@ fun SettingsScreen(
                             },
                             shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2)
                         ) {
-                            Text("Default (prominent gauge)")
+                            Text(stringResource(R.string.default_homepage))
                         }
                         SegmentedButton(
                             selected = selectedLayout == DashboardLayout.ALTERNATIVE,
@@ -159,8 +161,37 @@ fun SettingsScreen(
                             },
                             shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2)
                         ) {
-                            Text("Card-based UI (prominent actions)")
+                            Text(stringResource(R.string.card_homepage))
                         }
+                    }
+                }
+            }
+
+            var currentLanguage by remember { mutableStateOf(AppLocaleManager.getCurrentLanguage(context)) }
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = stringResource(R.string.language_selection),
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        FilterChip(
+                            selected = currentLanguage.startsWith("en"),
+                            onClick = {
+                                AppLocaleManager.setLanguage(context, "en")
+                                currentLanguage = "en"
+                            },
+                            label = { Text("English") }
+                        )
                     }
                 }
             }
@@ -169,7 +200,7 @@ fun SettingsScreen(
 
             // Application info/about section
             Text(
-                text = "App info",
+                text = stringResource(R.string.appinfo),
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.SemiBold
@@ -189,12 +220,12 @@ fun SettingsScreen(
                 ) {
                     Column {
                         Text(
-                            text = "About StepTrackr",
+                            text = stringResource(R.string.aboutapp),
                             style = MaterialTheme.typography.bodyLarge,
                             fontWeight = FontWeight.Medium
                         )
                         Text(
-                            text = "Version 1.2",
+                            text = stringResource(R.string.version),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

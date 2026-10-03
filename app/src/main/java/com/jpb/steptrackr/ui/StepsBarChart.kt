@@ -12,12 +12,14 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.jpb.steptrackr.R
 import com.jpb.steptrackr.utils.StepDataPoint
 
 @Composable
@@ -41,7 +43,7 @@ fun StepsBarChart(
             .padding(16.dp)
     ) {
         Text(
-            text = "Steps over time",
+            text = stringResource(R.string.steps_over_time),
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurface
         )

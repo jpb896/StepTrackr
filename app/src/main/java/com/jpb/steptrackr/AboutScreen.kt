@@ -8,6 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -20,7 +21,7 @@ fun AboutScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("About") },
+                title = { Text(stringResource(R.string.about)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
@@ -59,13 +60,13 @@ fun AboutScreen(
                 }
 
                 Text(
-                    text = "StepTrackr",
+                    text = stringResource(R.string.app_name),
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold
                 )
 
                 Text(
-                    text = "Version 1.2",
+                    text = stringResource(R.string.version),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -83,13 +84,13 @@ fun AboutScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        text = "About the app",
+                        text = stringResource(R.string.aboutapp_card_title),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.primary
                     )
                     Text(
-                        text = "StepTrackr is a lightweight, privacy-focused step tracking/pedometer app designed for Android devices. It utilizes on-device hardware sensors for step counting and seamlessly syncs with Health Connect, but can use Google Mobile Services APIs (specifically Play Services' Fitness API) for seamless integration with GMS.",
+                        text = stringResource(R.string.aboutapp_card_description),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -102,30 +103,30 @@ fun AboutScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Text(
-                    text = "Key features",
+                    text = stringResource(R.string.key_features),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.primary
                 )
 
                 AboutFeatureItem(
-                    title = "Non-GMS step tracking",
-                    description = "Runs directly on local device sensors using a foreground service."
+                    title = stringResource(R.string.nongms_card_title),
+                    description = stringResource(R.string.nongms_card_description)
                 )
 
                 AboutFeatureItem(
-                    title = "GMS step tracking",
-                    description = "The app can use GMS Health APIs if available to allow for a more seamless experience on GMS devices."
+                    title = stringResource(R.string.gms_card_title),
+                    description = stringResource(R.string.gms_card_description)
                 )
 
                 AboutFeatureItem(
-                    title = "Health Connect integration",
-                    description = "Syncs background steps directly to your central health dashboard."
+                    title = stringResource(R.string.hc_card_title),
+                    description = stringResource(R.string.hc_card_description)
                 )
 
                 AboutFeatureItem(
-                    title = "Material 3 Expressive UI",
-                    description = "Built with modern Jetpack Compose components and animations."
+                    title = stringResource(R.string.m3e_card_title),
+                    description = stringResource(R.string.m3e_card_description)
                 )
             }
 
@@ -133,7 +134,7 @@ fun AboutScreen(
 
             // Legal and framework info
             Text(
-                text = "Built with Jetpack Compose & Kotlin\n© 2026 jpb\nLicensed under the Apache License 2.0",
+                text = stringResource(R.string.attribution),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.outline,
                 textAlign = TextAlign.Center

@@ -39,6 +39,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -156,8 +157,7 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                                     },
                                     onSyncTrigger = {
                                         triggerImmediateSync(this@MainActivity)
-                                        Toast.makeText(this@MainActivity, "Steps synced to Health Connect!", Toast.LENGTH_SHORT).show()
-                                    },
+                                        Toast.makeText(this@MainActivity, getString(R.string.manualsync_text), Toast.LENGTH_SHORT).show()                                    },
                                     onOpenSettings = { currentScreen = Screen.Settings },
                                     onOpenStepHistory = { currentScreen = Screen.StepHistory }
                                 )
@@ -304,6 +304,7 @@ class MainActivity : ComponentActivity(), SensorEventListener {
     }
 }
 
+@SuppressLint("LocalContextGetResourceValueCall")
 @Composable
 fun PermissionAndDashboardScreen(
     hasActivityPermission: Boolean,
@@ -432,7 +433,7 @@ fun PermissionAndDashboardScreen(
                         onRequestPermissions = {
                             val channel = NotificationChannel(
                                 "non_gms_activity_tracking_channel",
-                                "Activity tracking",
+                                context.getString(R.string.steptracking_notification_channel),
                                 NotificationManager.IMPORTANCE_MIN
                             )
                             val manager =
@@ -504,7 +505,7 @@ fun PermissionAndDashboardScreen(
                         onRequestPermissions = {
                             val channel = NotificationChannel(
                                 "non_gms_activity_tracking_channel",
-                                "Activity tracking",
+                                context.getString(R.string.steptracking_notification_channel),
                                 NotificationManager.IMPORTANCE_MIN
                             )
                             val manager =
@@ -558,7 +559,7 @@ private fun HealthConnectCard(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "Health Connect integration",
+                text = stringResource(R.string.hc_card_title),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
@@ -566,7 +567,7 @@ private fun HealthConnectCard(
 
             if (!hasHealthPermission) {
                 Text(
-                    text = "Connect this app with Health Connect to share your daily progress safely and securely.",
+                    text = stringResource(R.string.hc_connection_notice),
                     style = MaterialTheme.typography.bodyMedium,
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center
                 )
@@ -575,11 +576,11 @@ private fun HealthConnectCard(
                     onClick = onRequestPermission,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Link Health Connect")
+                    Text(stringResource(R.string.hc_link_button))
                 }
             } else {
                 Text(
-                    text = "Your step data is securely syncing automatically with Android's system health registry.",
+                    text = stringResource(R.string.hc_sync_notice),
                     style = MaterialTheme.typography.bodyMedium,
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center
                 )
@@ -588,7 +589,7 @@ private fun HealthConnectCard(
                     onClick = onSyncTrigger,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Sync data now")
+                    Text(stringResource(R.string.hc_synchronize_now))
                 }
             }
         }
@@ -607,11 +608,11 @@ private fun PermissionStatusSection(
             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Grant required permissions")
+            Text(stringResource(R.string.grant_perms_button))
         }
     } else {
         Text(
-            text = "Pedometer monitoring active",
+            text = stringResource(R.string.pedometer_monitoring_active),
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.primary
         )
@@ -683,7 +684,7 @@ fun Material3ExpressiveStepGauge(
             )
             Spacer(modifier = Modifier.height(2.dp))
             Text(
-                text = "of ${String.format("%,d", stepGoal)} steps",
+                text = stringResource(R.string.step_goal_main_display, stepGoal),
                 fontSize = if (gaugeSize < 250.dp) 13.sp else 15.sp,
                 fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant

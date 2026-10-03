@@ -10,6 +10,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.jpb.steptrackr.ui.StepsBarChart
 import com.jpb.steptrackr.utils.HistoryTimeFrame
@@ -51,7 +52,7 @@ fun StepHistoryScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Step history") },
+                title = { Text(stringResource(R.string.stephistory)) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(
@@ -252,10 +253,10 @@ private fun GraphConfigControls(
                         FilterChip(
                             selected = selectedDate == LocalDate.now(),
                             onClick = { onDateSelected(LocalDate.now()) },
-                            label = { Text("Today") }
+                            label = { Text(stringResource(R.string.today)) }
                         )
                         OutlinedButton(onClick = { showSingleDatePicker = true }) {
-                            Text("Custom Date")
+                            Text(stringResource(R.string.custom_date))
                         }
                     }
                 }
@@ -268,10 +269,10 @@ private fun GraphConfigControls(
                         FilterChip(
                             selected = startDate == LocalDate.now().minusDays(6) && endDate == LocalDate.now(),
                             onClick = { onRangeSelected(LocalDate.now().minusDays(6), LocalDate.now()) },
-                            label = { Text("Last 7d") }
+                            label = { Text(stringResource(R.string.pastweek)) }
                         )
                         OutlinedButton(onClick = { showDateRangePicker = true }) {
-                            Text("Custom Range")
+                            Text(stringResource(R.string.custom_range))
                         }
                     }
                 }
@@ -282,7 +283,7 @@ private fun GraphConfigControls(
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         OutlinedButton(onClick = { showHcDatePicker = true }) {
-                            Text("Date")
+                            Text(stringResource(R.string.date))
                         }
                         Box {
                             OutlinedButton(onClick = { hcHourMenuExpanded = true }) {
@@ -325,7 +326,7 @@ private fun GraphConfigControls(
                 }) { Text("OK") }
             },
             dismissButton = {
-                TextButton(onClick = { showSingleDatePicker = false }) { Text("Cancel") }
+                TextButton(onClick = { showSingleDatePicker = false }) { Text(stringResource(R.string.cancel)) }
             }
         ) { DatePicker(state = datePickerState) }
     }
@@ -346,7 +347,7 @@ private fun GraphConfigControls(
                 }) { Text("OK") }
             },
             dismissButton = {
-                TextButton(onClick = { showHcDatePicker = false }) { Text("Cancel") }
+                TextButton(onClick = { showHcDatePicker = false }) { Text(stringResource(R.string.cancel)) }
             }
         ) { DatePicker(state = hcDatePickerState) }
     }
@@ -371,7 +372,7 @@ private fun GraphConfigControls(
                 }) { Text("OK") }
             },
             dismissButton = {
-                TextButton(onClick = { showDateRangePicker = false }) { Text("Cancel") }
+                TextButton(onClick = { showDateRangePicker = false }) { Text(stringResource(R.string.cancel)) }
             }
         ) { DateRangePicker(state = dateRangePickerState) }
     }
@@ -395,7 +396,7 @@ private fun SummaryCard(
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
-                    text = "Total steps",
+                    text = stringResource(R.string.total_steps),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -407,9 +408,9 @@ private fun SummaryCard(
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
                     text = when (timeFrame) {
-                        HistoryTimeFrame.HOURLY -> "Avg/hr"
-                        HistoryTimeFrame.DAILY -> "Avg/day"
-                        HistoryTimeFrame.HEALTH_CONNECT_HOURLY -> "Avg/10m"
+                        HistoryTimeFrame.HOURLY -> stringResource(R.string.hourly_average)
+                        HistoryTimeFrame.DAILY -> stringResource(R.string.daily_average)
+                        HistoryTimeFrame.HEALTH_CONNECT_HOURLY -> stringResource(R.string.ten_min_average)
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
