@@ -55,8 +55,10 @@ import com.google.android.gms.common.GoogleApiAvailability
 import com.google.android.gms.fitness.FitnessLocal
 import com.google.android.gms.fitness.data.LocalDataType
 import com.jpb.steptrackr.services.HealthConnectRepository
+import com.jpb.steptrackr.ui.AlternativeDashboardScreen
 import com.jpb.steptrackr.ui.ExpressiveButton
 import com.jpb.steptrackr.ui.theme.AppTheme
+import com.jpb.steptrackr.utils.DashboardLayout
 import com.jpb.steptrackr.utils.GoalNotificationHelper
 import com.jpb.steptrackr.utils.HistoryTimeFrame
 import com.jpb.steptrackr.utils.SensorMetadata
@@ -120,27 +122,46 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     var currentScreen by remember { mutableStateOf(Screen.Dashboard) }
+                    val goalPrefs = remember { StepGoalPreferences(applicationContext) }
+                    val currentLayout = remember(currentScreen) { goalPrefs.getDashboardLayout() }
 
                     when (currentScreen) {
                         Screen.Dashboard -> {
-                            PermissionAndDashboardScreen(
-                                hasActivityPermission = isActivityPermissionGranted.value,
-                                hasNotificationPermission = isNotificationPermissionGranted.value,
-                                onPermissionsUpdated = { activityGranted, notificationGranted ->
-                                    isActivityPermissionGranted.value = activityGranted
-                                    isNotificationPermissionGranted.value = notificationGranted
-                                    if (activityGranted) {
-                                        registerPedometerAndService()
-                                        setupGmsStepRecording(this@MainActivity)
-                                    }
-                                },
-                                onSyncTrigger = {
-                                    triggerImmediateSync(this@MainActivity)
-                                    Toast.makeText(this@MainActivity, "Steps synced to Health Connect!", Toast.LENGTH_SHORT).show()
-                                },
-                                onOpenSettings = { currentScreen = Screen.Settings },
-                                onOpenStepHistory = { currentScreen = Screen.StepHistory }
-                            )
+                            if (currentLayout == DashboardLayout.ALTERNATIVE) {
+                                val startOfDay = remember {
+                                    LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+                                }
+                                val todayStepsState by database.stepDao().getTodayLocalStepsFlow(startOfDay)
+                                    .collectAsState(initial = 0L)
+
+                                AlternativeDashboardScreen(
+                                    currentSteps = todayStepsState ?: 0L,
+                                    dailyGoal = goalPrefs.getStepGoal().toInt(),
+                                    onNavigateToMap = { /* Optional map navigation action */ },
+                                    onNavigateToHistory = { currentScreen = Screen.StepHistory },
+                                    onMenuClick = { currentScreen = Screen.Settings },
+                                    onSettingsClick = { currentScreen = Screen.Settings }
+                                )
+                            } else {
+                                PermissionAndDashboardScreen(
+                                    hasActivityPermission = isActivityPermissionGranted.value,
+                                    hasNotificationPermission = isNotificationPermissionGranted.value,
+                                    onPermissionsUpdated = { activityGranted, notificationGranted ->
+                                        isActivityPermissionGranted.value = activityGranted
+                                        isNotificationPermissionGranted.value = notificationGranted
+                                        if (activityGranted) {
+                                            registerPedometerAndService()
+                                            setupGmsStepRecording(this@MainActivity)
+                                        }
+                                    },
+                                    onSyncTrigger = {
+                                        triggerImmediateSync(this@MainActivity)
+                                        Toast.makeText(this@MainActivity, "Steps synced to Health Connect!", Toast.LENGTH_SHORT).show()
+                                    },
+                                    onOpenSettings = { currentScreen = Screen.Settings },
+                                    onOpenStepHistory = { currentScreen = Screen.StepHistory }
+                                )
+                            }
                         }
                         Screen.Settings -> {
                             SettingsScreen(
@@ -163,7 +184,6 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                                     if (timeFrame == HistoryTimeFrame.HEALTH_CONNECT_HOURLY) {
                                         lifecycleScope.launch {
                                             triggerImmediateSync(this@MainActivity)
-                                            // Re-query Health Connect after sync completes
                                             stepHistoryViewModel.refreshHealthConnectData()
                                         }
                                     }

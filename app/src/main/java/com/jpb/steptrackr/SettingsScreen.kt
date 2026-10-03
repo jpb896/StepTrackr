@@ -14,6 +14,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.jpb.steptrackr.ui.ExpressiveButton
+import com.jpb.steptrackr.utils.DashboardLayout
 import com.jpb.steptrackr.utils.StepGoalPreferences
 
 @Composable
@@ -27,6 +28,7 @@ fun SettingsScreen(
     var currentGoal by remember { mutableLongStateOf(goalPrefs.getStepGoal()) }
     var customGoalInput by remember { mutableStateOf(currentGoal.toString()) }
     var isError by remember { mutableStateOf(false) }
+    var selectedLayout by remember { mutableStateOf(goalPrefs.getDashboardLayout()) }
 
     val presetGoals = remember { listOf(5000L, 8000L, 10000L, 12000L, 15000L) }
 
@@ -49,7 +51,7 @@ fun SettingsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .verticalScroll(rememberScrollState()) // Prevents soft-keyboard clipping
+                .verticalScroll(rememberScrollState())
                 .padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
@@ -116,6 +118,55 @@ fun SettingsScreen(
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
+            // Homepage Layout Selector Section
+            Text(
+                text = "Home page layout",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.SemiBold
+            )
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        text = "Choose your preferred home screen style",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                        SegmentedButton(
+                            selected = selectedLayout == DashboardLayout.DEFAULT,
+                            onClick = {
+                                selectedLayout = DashboardLayout.DEFAULT
+                                goalPrefs.setDashboardLayout(DashboardLayout.DEFAULT)
+                            },
+                            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2)
+                        ) {
+                            Text("Default (prominent gauge)")
+                        }
+                        SegmentedButton(
+                            selected = selectedLayout == DashboardLayout.ALTERNATIVE,
+                            onClick = {
+                                selectedLayout = DashboardLayout.ALTERNATIVE
+                                goalPrefs.setDashboardLayout(DashboardLayout.ALTERNATIVE)
+                            },
+                            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2)
+                        ) {
+                            Text("Card-based UI (prominent actions)")
+                        }
+                    }
+                }
+            }
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
             // Application info/about section
             Text(
                 text = "App info",
@@ -149,7 +200,7 @@ fun SettingsScreen(
                         )
                     }
                     Icon(
-                        painter = painterResource(R.drawable.ic_chevron_right), // Or an ic_chevron_right if available
+                        painter = painterResource(R.drawable.ic_chevron_right),
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
