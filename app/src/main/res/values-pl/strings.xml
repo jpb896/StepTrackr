@@ -2,8 +2,8 @@
     <string name="steptracking_notification_title">Monitorowanie kroków</string>
     <string name="steptracking_notification_subtitle">Używanie krokomierza (licznika kroków), żeby monitorować liczbę kroków</string>
     <string name="steptracking_notification_channel">Monitorowanie aktywności</string>
-    <string name="morning_greeting">Good morning! 👋</string>
-    <string name="afternoon_greeting">Good afternoon! 👋</string>
+    <string name="morning_greeting">Dzień dobry! 👋</string>
+    <string name="afternoon_greeting">Dobry wieczór! 👋</string>
     <string name="evening_greeting">Dobry wieczór! 👋</string>
     <string name="todays_progress">DZISIEJSZY POSTĘP</string>
     <string name="step_goal_main_display">z %1$d kroków</string>
