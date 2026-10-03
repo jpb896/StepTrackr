@@ -192,6 +192,14 @@ fun SettingsScreen(
                             },
                             label = { Text("English") }
                         )
+                        FilterChip(
+                            selected = currentLanguage.startsWith("pl"),
+                            onClick = {
+                                AppLocaleManager.setLanguage(context, "pl")
+                                currentLanguage = "pl"
+                            },
+                            label = { Text("Polski") }
+                        )
                     }
                 }
             }

@@ -1,0 +1,81 @@
+<resources>
+    <string name="steptracking_notification_title">Monitorowanie kroków</string>
+    <string name="steptracking_notification_subtitle">Używanie krokomierza (licznika kroków), żeby monitorować liczbę kroków</string>
+    <string name="steptracking_notification_channel">Monitorowanie aktywności</string>
+    <string name="morning_greeting">Good morning! 👋</string>
+    <string name="afternoon_greeting">Good afternoon! 👋</string>
+    <string name="evening_greeting">Dobry wieczór! 👋</string>
+    <string name="todays_progress">DZISIEJSZY POSTĘP</string>
+    <string name="step_goal_main_display">z %1$d kroków</string>
+    <string name="step_goal_main_display_variant">z %1$d kroków</string>
+    <string name="your_movement">Twój ruch</string>
+    <string name="where_youve_been">
+        {gender, select,
+            female {Gdzie byłaś}
+            male {Gdzie byłeś}
+            other {Gdzie byłeś}
+        }
+    </string>
+    <string name="your_walking_statistics">Twoje statystyki chodu</string>
+    <string name="steps_over_time">Chód przez czas</string>
+    <string name="stepgoal_notification_channel_title">Cel kroków</string>
+    <string name="stepgoal_notification_channel_description">Notifications when you reach your daily step goal</string>
+    <string name="stepgoal_notification_title">Cel osiągnięty! 🎉</string>
+    <string name="stepgoal_notification_subtitle">
+        {gender, select,
+            female {Gratulacje! Osiągnełaś swój dzisiejszy cel: $totalSteps kroków.}
+            male {Gratulacje! Osiągnąłeś swój dzisiejszy cel: $totalSteps kroków.}
+            other {Gratulacje! Osiągnąłeś swój dzisiejszy cel: $totalSteps kroków.}
+        }
+    </string>
+    <string name="about">O aplikacji</string>
+    <string name="version">wersja 1.2</string>
+    <string name="aboutapp_card_title">O aplikacji</string>
+    <string name="aboutapp_card_description">StepTrackr jest lekką aplikacją, zkonstruowaną dla Android\'a, która szanuje Twoją prywatność i pozwala Ci sprawdzić swój numer kroków. Używa sensory fizyczne żeby zbierać dane i synchronizuje sie z Health Connect, ale też może użyć API Google Mobile Services (sczególnie Fitness API Usług Play), żeby zapewnić integrację z GMS.</string>
+    <string name="key_features">Główne funkcje</string>
+    <string name="nongms_card_title">Monitorowanie kroków bez GMS</string>
+    <string name="nongms_card_description">Używa lokalne sensory (krokomierz) przez usługę w widoku/pierwszego planu.</string>
+    <string name="gms_card_title">Monitorowanie kroków z GMS</string>
+    <string name="gms_card_description">Możliwe jest też użycie API Health od GMS przez aplikację na urządzeniach które mają GMS.</string>
+    <string name="hc_card_title">Integracja z Health Connect</string>
+    <string name="hc_card_description">Kroki wykonane kiedy aplikacja jest w tle są synchronizowane bezpośrednio do centralnej rejestry danych aktywności.</string>
+    <string name="m3e_card_title">UI Material 3 Expressive</string>
+    <string name="m3e_card_description">Ten program został zkonstruowany przy użyciu nowoczesnych komponentów Jetpack Compose.</string>
+    <string name="attribution">Ten program został zkonstruowany przy użyciu Jetpack Compose i Kotlin
+\n© 2026 jpb
+\nLicencjonowane przez Apache License 2.0</string>
+    <string name="manualsync_text">Synchronizacja kroków z Health Connect powiodła się!</string>
+    <string name="hc_connection_notice">Połącz tą aplikację z Health Connect, aby móc bezpiecznie udostępniać twoje dzienne postępy.</string>
+    <string name="hc_sync_notice">Twoje kroki są automatycznie synchronizowane z centralną rejestrą danych aktywności.</string>
+    <string name="hc_link_button">Dołącz Health Connect</string>
+    <string name="hc_synchronize_now">Synchronizuj z Health Connect</string>
+    <string name="grant_perms_button">Dozwól portrzebne uprawnienia</string>
+    <string name="pedometer_monitoring_active">Monitorowanie pedometru aktywne</string>
+    <string name="settings">Ustawienia</string>
+    <string name="daily_target_title">Dzienny cel</string>
+    <string name="preset_targets">Domyślne cele</string>
+    <string name="goal_thousand">%1$d tys.</string>
+    <string name="custom_target">Własny cel</string>
+    <string name="custom_target_validation">Prosze wpisać liczbę (n.p. 8000)</string>
+    <string name="homepage_layout">Styl strony głównej</string>
+    <string name="homepage_layout_subtitle">Wybierz styl strony głównej</string>
+    <string name="default_homepage">Domyślny</string>
+    <string name="card_homepage">Karty</string>
+    <string name="appinfo">O aplikacji</string>
+    <string name="aboutapp">O StepTrackr</string>
+    <string name="stephistory">Historia kroków</string>
+    <string name="hourly">Godzinnie</string>
+    <string name="daily">Dziennie</string>
+    <string name="today">Dzisiaj</string>
+    <string name="custom_date">Własna date</string>
+    <string name="pastweek">Ostatnie 7 dni</string>
+    <string name="custom_range">Własny okres</string>
+    <string name="date">Data</string>
+    <string name="cancel">Anuluj</string>
+    <string name="total_steps">Total kroków</string>
+    <string name="hourly_average">Średnia/godzinę</string>
+    <string name="daily_average">Średnia/dzień</string>
+    <string name="ten_min_average">Średnia/10min</string>
+    <string name="language_selection">Język</string>
+
+</resources>

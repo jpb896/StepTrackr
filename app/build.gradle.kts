@@ -20,7 +20,7 @@ android {
         versionName = "1.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        resourceConfigurations += setOf("en")
+        resourceConfigurations += setOf("en", "pl")
     }
 
     buildTypes {
