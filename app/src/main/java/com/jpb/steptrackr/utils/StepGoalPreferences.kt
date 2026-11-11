@@ -3,6 +3,7 @@ package com.jpb.steptrackr.utils
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
+import java.time.LocalDate
 
 enum class DashboardLayout {
     DEFAULT, ALTERNATIVE
@@ -15,6 +16,7 @@ class StepGoalPreferences(context: Context) {
     companion object {
         private const val KEY_STEP_GOAL = "key_step_goal"
         private const val KEY_DASHBOARD_LAYOUT = "key_dashboard_layout"
+        private const val KEY_LAST_CELEBRATED_DATE = "last_celebrated_date"
         const val DEFAULT_GOAL = 10000L
     }
 
@@ -45,7 +47,6 @@ class StepGoalPreferences(context: Context) {
         OTHER("other")
     }
 
-    // In StepGoalPreferences.kt:
     fun getUserGender(): UserGender {
         val saved = prefs.getString("user_gender", UserGender.OTHER.name)
         return try { UserGender.valueOf(saved!!) } catch (e: Exception) { UserGender.OTHER }
@@ -53,5 +54,16 @@ class StepGoalPreferences(context: Context) {
 
     fun setUserGender(gender: UserGender) {
         prefs.edit { putString("user_gender", gender.name) }
+    }
+
+    fun hasCelebratedToday(): Boolean {
+        val lastDate = prefs.getString(KEY_LAST_CELEBRATED_DATE, "")
+        val today = LocalDate.now().toString()
+        return lastDate == today
+    }
+
+    fun setCelebratedToday() {
+        val today = LocalDate.now().toString()
+        prefs.edit { putString(KEY_LAST_CELEBRATED_DATE, today) }
     }
 }

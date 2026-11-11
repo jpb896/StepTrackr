@@ -380,11 +380,12 @@ fun PermissionAndDashboardScreen(
         )
     }
 
-    var hasTriggeredGoal by remember { mutableStateOf(false) }
+    var hasTriggeredGoal by remember { mutableStateOf(goalPrefs.hasCelebratedToday()) }
 
     LaunchedEffect(todaySteps) {
         if (todaySteps >= stepGoal && stepGoal > 0 && !hasTriggeredGoal) {
             hasTriggeredGoal = true
+            goalPrefs.setCelebratedToday()
             GoalNotificationHelper.showGoalReachedNotification(context, todaySteps)
         }
     }
@@ -460,7 +461,8 @@ fun PermissionAndDashboardScreen(
                         IconButton(onClick = onOpenMap) {
                             Icon(
                                 painter = painterResource(R.drawable.map_24px),
-                                contentDescription = "Route map"
+                                contentDescription = "Route map",
+                                tint = MaterialTheme.colorScheme.onSurface
                             )
                         }
                         IconButton(onClick = onOpenStepHistory) {
@@ -523,7 +525,8 @@ fun PermissionAndDashboardScreen(
                     IconButton(onClick = onOpenMap) {
                         Icon(
                             painter = painterResource(R.drawable.map_24px),
-                            contentDescription = "Route map"
+                            contentDescription = "Route map",
+                            tint = MaterialTheme.colorScheme.onSurface
                         )
                     }
                     IconButton(onClick = onOpenStepHistory) {
@@ -593,7 +596,7 @@ fun PermissionAndDashboardScreen(
             }
         }
 
-        if (hasTriggeredGoal) {
+        if (hasTriggeredGoal && !goalPrefs.hasCelebratedToday()) {
             KonfettiView(
                 parties = listOf(
                     Party(
