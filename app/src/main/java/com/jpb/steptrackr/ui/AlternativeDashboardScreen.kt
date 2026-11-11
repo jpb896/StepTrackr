@@ -116,13 +116,6 @@ fun AlternativeDashboardScreen(
                         }
                     },
                     actions = {
-                        IconButton(onClick = onNavigateToMap) {
-                            Icon(
-                                painter = painterResource(R.drawable.map_24px),
-                                contentDescription = "Route map",
-                                tint = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
                         IconButton(onClick = onSettingsClick) {
                             Icon(
                                 painter = painterResource(R.drawable.ic_settings),
