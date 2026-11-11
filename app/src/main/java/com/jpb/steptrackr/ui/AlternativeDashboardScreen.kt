@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -25,9 +26,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.jpb.steptrackr.R
 import com.jpb.steptrackr.utils.AppLocaleManager
+import com.jpb.steptrackr.utils.RouteDistanceCalculator
+import com.jpb.steptrackr.utils.StepDatabase
 import com.jpb.steptrackr.utils.StepGoalPreferences
 import com.jpb.steptrackr.utils.icuStringResource
+import java.time.LocalDate
 import java.time.LocalTime
+import java.time.ZoneId
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -52,6 +57,19 @@ fun AlternativeDashboardScreen(
         mutableStateOf(AppLocaleManager.getCurrentLanguage(context))
     }
 
+    val database = remember { StepDatabase.getDatabase(context) }
+    val startOfDay = remember {
+        LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+    }
+
+    val routePoints by database.stepDao()
+        .getRoutePointsForRangeFlow(startOfDay, System.currentTimeMillis())
+        .collectAsState(initial = emptyList())
+
+    val distanceKm = remember(routePoints) {
+        RouteDistanceCalculator.calculateTotalDistanceKm(routePoints.map { RouteLocation(it.latitude, it.longitude) })
+    }
+
     val containerBg = MaterialTheme.colorScheme.surface
     val mainCardBg = MaterialTheme.colorScheme.primaryContainer
     val mainCardOnColor = MaterialTheme.colorScheme.onPrimaryContainer
@@ -72,7 +90,7 @@ fun AlternativeDashboardScreen(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = {}) {
+                    IconButton(onClick = onMenuClick) {
                         Icon(
                             painter = painterResource(R.drawable.ic_menu),
                             contentDescription = "Menu"
@@ -137,6 +155,13 @@ fun AlternativeDashboardScreen(
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Medium,
                             color = mainCardOnColor.copy(alpha = 0.8f)
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "Distance: %.2f km".format(distanceKm),
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = mainCardOnColor.copy(alpha = 0.9f)
                         )
                     }
 
