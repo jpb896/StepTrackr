@@ -65,6 +65,7 @@ import com.jpb.steptrackr.utils.AppLocationTracker
 import com.jpb.steptrackr.utils.DashboardLayout
 import com.jpb.steptrackr.utils.GoalNotificationHelper
 import com.jpb.steptrackr.utils.HistoryTimeFrame
+import com.jpb.steptrackr.utils.RouteDistanceCalculator
 import com.jpb.steptrackr.utils.SensorMetadata
 import com.jpb.steptrackr.utils.StepDatabase
 import com.jpb.steptrackr.utils.StepDelta
@@ -172,7 +173,8 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                                         Toast.makeText(this@MainActivity, getString(R.string.manualsync_text), Toast.LENGTH_SHORT).show()
                                     },
                                     onOpenSettings = { currentScreen = Screen.Settings },
-                                    onOpenStepHistory = { currentScreen = Screen.StepHistory }
+                                    onOpenStepHistory = { currentScreen = Screen.StepHistory },
+                                    onOpenMap = { currentScreen = Screen.RouteMap }
                                 )
                             }
                         }
@@ -350,7 +352,8 @@ fun PermissionAndDashboardScreen(
     onPermissionsUpdated: (Boolean, Boolean, Boolean) -> Unit,
     onSyncTrigger: () -> Unit,
     onOpenSettings: () -> Unit,
-    onOpenStepHistory: () -> Unit
+    onOpenStepHistory: () -> Unit,
+    onOpenMap: () -> Unit
 ) {
     val context = LocalContext.current
     val goalPrefs = remember { StepGoalPreferences(context) }
@@ -367,10 +370,20 @@ fun PermissionAndDashboardScreen(
     val todaySteps = todayStepsState ?: 0L
     val stepGoal = remember(context) { goalPrefs.getStepGoal() }
 
+    val routePoints by db.stepDao()
+        .getRoutePointsForRangeFlow(startOfDay, System.currentTimeMillis())
+        .collectAsState(initial = emptyList())
+
+    val distanceKm = remember(routePoints) {
+        RouteDistanceCalculator.calculateTotalDistanceKm(
+            routePoints.map { com.jpb.steptrackr.ui.RouteLocation(it.latitude, it.longitude) }
+        )
+    }
+
     var hasTriggeredGoal by remember { mutableStateOf(false) }
 
     LaunchedEffect(todaySteps) {
-        if (stepGoal in 1..todaySteps && !hasTriggeredGoal) {
+        if (todaySteps >= stepGoal && stepGoal > 0 && !hasTriggeredGoal) {
             hasTriggeredGoal = true
             GoalNotificationHelper.showGoalReachedNotification(context, todaySteps)
         }
@@ -444,6 +457,12 @@ fun PermissionAndDashboardScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.End
                     ) {
+                        IconButton(onClick = onOpenMap) {
+                            Icon(
+                                painter = painterResource(R.drawable.map_24px),
+                                contentDescription = "Route map"
+                            )
+                        }
                         IconButton(onClick = onOpenStepHistory) {
                             Icon(
                                 painter = painterResource(R.drawable.ic_history),
@@ -501,6 +520,12 @@ fun PermissionAndDashboardScreen(
                     horizontalArrangement = Arrangement.End,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    IconButton(onClick = onOpenMap) {
+                        Icon(
+                            painter = painterResource(R.drawable.map_24px),
+                            contentDescription = "Route map"
+                        )
+                    }
                     IconButton(onClick = onOpenStepHistory) {
                         Icon(
                             painter = painterResource(R.drawable.ic_history),
@@ -528,6 +553,12 @@ fun PermissionAndDashboardScreen(
                         currentSteps = todaySteps,
                         stepGoal = stepGoal,
                         gaugeSize = 260.dp
+                    )
+
+                    Text(
+                        text = "Distance traveled: %.2f km".format(distanceKm),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
                     )
 
                     HealthConnectCard(
