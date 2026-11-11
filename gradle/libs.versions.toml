@@ -1,15 +1,16 @@
 [versions]
-agp = "9.5.0-alpha08"
+agp = "9.5.1"
 connectClient = "1.1.0"
 coreKtx = "1.19.1"
-konfettiCompose = "2.0.5"
+konfettiCompose = "2.2.0"
 kotlinxCoroutinesPlayServices = "1.11.0"
 lifecycleRuntimeKtx = "2.11.0"
 activityCompose = "1.13.0"
-kotlin = "2.4.20"
+kotlin = "2.4.21"
 composeBom = "2026.09.00"
-material3 = "1.5.0-alpha29"
-playServicesBase = "18.11.0"
+material3 = "1.5.0-rc01"
+osmdroidAndroid = "6.1.20"
+playServicesBase = "18.11.1"
 playServicesFitness = "21.3.0"
 roomVersion = "2.8.5"
 workRuntimeKtx = "2.12.0"
@@ -33,6 +34,7 @@ androidx-compose-ui-tooling = { group = "androidx.compose.ui", name = "ui-toolin
 androidx-compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
 konfetti-compose = { module = "nl.dionsegijn:konfetti-compose", version.ref = "konfettiCompose" }
 kotlinx-coroutines-play-services = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-play-services", version.ref = "kotlinxCoroutinesPlayServices" }
+osmdroid-android = { module = "org.osmdroid:osmdroid-android", version.ref = "osmdroidAndroid" }
 play-services-base = { module = "com.google.android.gms:play-services-base", version.ref = "playServicesBase" }
 play-services-fitness = { module = "com.google.android.gms:play-services-fitness", version.ref = "playServicesFitness" }
 androidx-compose-foundation-layout = { group = "androidx.compose.foundation", name = "foundation-layout", version.ref = "foundationLayout" }
