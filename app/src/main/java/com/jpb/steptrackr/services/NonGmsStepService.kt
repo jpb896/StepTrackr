@@ -142,7 +142,7 @@ class NonGmsStepService : Service(), SensorEventListener {
 
                 if (goal in 1..todaySteps && !goalNotifiedToday) {
                     goalNotifiedToday = true
-                    GoalNotificationHelper.showGoalReachedNotification(applicationContext, todaySteps)
+                    GoalNotificationHelper.showGoalReachedNotification(applicationContext, goal.toInt())
                 }
 
                 Log.d("StepService", "Room persistence execution complete. Saved delta: $delta")

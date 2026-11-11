@@ -83,7 +83,7 @@ fun AlternativeDashboardScreen(
         if (currentSteps >= dailyGoal && dailyGoal > 0 && !hasTriggeredGoal) {
             hasTriggeredGoal = true
             goalPrefs.setCelebratedToday()
-            GoalNotificationHelper.showGoalReachedNotification(context, currentSteps)
+            GoalNotificationHelper.showGoalReachedNotification(context, dailyGoal)
         }
     }
 

@@ -60,7 +60,6 @@ import com.jpb.steptrackr.ui.AlternativeDashboardScreen
 import com.jpb.steptrackr.ui.ExpressiveButton
 import com.jpb.steptrackr.ui.RouteMapScreen
 import com.jpb.steptrackr.ui.theme.AppTheme
-import com.jpb.steptrackr.utils.AppLocaleManager
 import com.jpb.steptrackr.utils.AppLocationTracker
 import com.jpb.steptrackr.utils.DashboardLayout
 import com.jpb.steptrackr.utils.GoalNotificationHelper
@@ -386,7 +385,7 @@ fun PermissionAndDashboardScreen(
         if (todaySteps >= stepGoal && stepGoal > 0 && !hasTriggeredGoal) {
             hasTriggeredGoal = true
             goalPrefs.setCelebratedToday()
-            GoalNotificationHelper.showGoalReachedNotification(context, todaySteps)
+            GoalNotificationHelper.showGoalReachedNotification(context, stepGoal.toInt())
         }
     }
 
