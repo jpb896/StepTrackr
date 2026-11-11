@@ -52,9 +52,6 @@ fun AlternativeDashboardScreen(
         mutableStateOf(AppLocaleManager.getCurrentLanguage(context))
     }
 
-    val currentGender = remember(goalPrefs) { goalPrefs.getUserGender().value }
-
-    // Dynamic Material You Theme Color Mapping
     val containerBg = MaterialTheme.colorScheme.surface
     val mainCardBg = MaterialTheme.colorScheme.primaryContainer
     val mainCardOnColor = MaterialTheme.colorScheme.onPrimaryContainer
@@ -103,7 +100,6 @@ fun AlternativeDashboardScreen(
                 .padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            // Greeting Banner
             Text(
                 text = greeting,
                 fontSize = 28.sp,
@@ -111,7 +107,6 @@ fun AlternativeDashboardScreen(
                 color = MaterialTheme.colorScheme.onSurface
             )
 
-            // Progress Card with Dynamically Themed Circular Indicator
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(28.dp),
@@ -145,7 +140,6 @@ fun AlternativeDashboardScreen(
                         )
                     }
 
-                    // Dynamically Themed Donut Arc Chart
                     Box(
                         contentAlignment = Alignment.Center,
                         modifier = Modifier.size(90.dp)
@@ -160,7 +154,6 @@ fun AlternativeDashboardScreen(
                         Canvas(modifier = Modifier.fillMaxSize()) {
                             val strokeWidth = 12.dp.toPx()
 
-                            // Background Arc Track using dynamic surface/container tint
                             drawArc(
                                 color = arcTrackColor,
                                 startAngle = -90f,
@@ -168,7 +161,6 @@ fun AlternativeDashboardScreen(
                                 useCenter = false,
                                 style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
                             )
-                            // Progress Arc using primary dynamic accent
                             drawArc(
                                 color = arcProgressColor,
                                 startAngle = -90f,
@@ -186,7 +178,6 @@ fun AlternativeDashboardScreen(
                 thickness = 1.dp
             )
 
-            // Section Label
             Text(
                 text = stringResource(R.string.your_movement),
                 fontSize = 20.sp,
@@ -194,7 +185,6 @@ fun AlternativeDashboardScreen(
                 color = MaterialTheme.colorScheme.onSurface
             )
 
-            // Action Button: Where you've been
             Card(
                 onClick = onNavigateToMap,
                 modifier = Modifier.fillMaxWidth(),
@@ -247,7 +237,6 @@ fun AlternativeDashboardScreen(
                 }
             }
 
-            // Action Button: Walking Statistics
             Card(
                 onClick = onNavigateToHistory,
                 modifier = Modifier.fillMaxWidth(),

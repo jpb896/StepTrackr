@@ -63,6 +63,7 @@ dependencies {
     implementation(libs.androidx.connect.client)
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
+    implementation(libs.play.services.location)
     ksp(libs.androidx.room.compiler)
     implementation(libs.konfetti.compose)
     implementation(libs.osmdroid.android)

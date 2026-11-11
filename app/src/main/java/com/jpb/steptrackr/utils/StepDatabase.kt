@@ -24,21 +24,27 @@ data class SensorMetadata(
     val lastSensorValue: Long
 )
 
-// Helper data classes to hold aggregated results from SQL
+@Entity(tableName = "route_points")
+data class RoutePointEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val latitude: Double,
+    val longitude: Double,
+    val timestamp: Long
+)
+
 data class HourlyStepTuple(
-    val hourOfDay: Int,  // Hour as integer 0 - 23
+    val hourOfDay: Int,
     val totalSteps: Long
 )
 
 data class DailyStepTuple(
-    val dateString: String, // e.g., "YYYY-MM-DD" or formatted date
+    val dateString: String,
     val totalSteps: Long
 )
 
 @Dao
 interface StepDao {
 
-    // Helper Flow to observe any changes in the step_deltas table
     @Query("SELECT COUNT(*) FROM step_deltas")
     fun getAllRecentDeltasFlow(): Flow<Int>
 
@@ -63,10 +69,6 @@ interface StepDao {
     @Query("SELECT SUM(delta) FROM step_deltas WHERE timestamp >= :startOfDay")
     fun getTodayLocalStepsFlow(startOfDay: Long): Flow<Long?>
 
-    /**
-     * Groups steps by hour for a specific range.
-     * Restricted between startOfDayMs and endOfDayMs to prevent current steps from spilling into historical views.
-     */
     @Query("""
         SELECT 
             CAST(strftime('%H', timestamp / 1000, 'unixepoch', 'localtime') AS INTEGER) AS hourOfDay,
@@ -78,10 +80,6 @@ interface StepDao {
     """)
     fun getHourlyStepsFlow(startOfDayMs: Long, endOfDayMs: Long): Flow<List<HourlyStepTuple>>
 
-    /**
-     * Groups steps by day for a historical date range.
-     * SQLite strftime('%Y-%m-%d', ...) groups by date.
-     */
     @Query("""
         SELECT 
             strftime('%Y-%m-%d', timestamp / 1000, 'unixepoch', 'localtime') AS dateString,
@@ -94,13 +92,19 @@ interface StepDao {
     fun getDailyStepsFlow(startTimeMs: Long, endTimeMs: Long): Flow<List<DailyStepTuple>>
 
     @Query("""
-    SELECT * FROM step_deltas 
-    WHERE timestamp >= :startTimeMs AND timestamp <= :endTimeMs
-""")
+        SELECT * FROM step_deltas 
+        WHERE timestamp >= :startTimeMs AND timestamp <= :endTimeMs
+    """)
     suspend fun getDeltasForRange(startTimeMs: Long, endTimeMs: Long): List<StepDelta>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertRoutePoint(point: RoutePointEntity)
+
+    @Query("SELECT * FROM route_points WHERE timestamp >= :startTimeMs AND timestamp <= :endTimeMs ORDER BY timestamp ASC")
+    fun getRoutePointsForRangeFlow(startTimeMs: Long, endTimeMs: Long): Flow<List<RoutePointEntity>>
 }
 
-@Database(entities = [StepDelta::class, SensorMetadata::class], version = 1, exportSchema = false)
+@Database(entities = [StepDelta::class, SensorMetadata::class, RoutePointEntity::class], version = 2, exportSchema = false)
 abstract class StepDatabase : RoomDatabase() {
     abstract fun stepDao(): StepDao
 
@@ -109,10 +113,10 @@ abstract class StepDatabase : RoomDatabase() {
         fun getDatabase(context: Context): StepDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
-                    context.applicationContext,
-                    StepDatabase::class.java,
-                    "step_tracker_db"
-                ).build()
+                                context.applicationContext,
+                                StepDatabase::class.java,
+                                "step_tracker_db"
+                            ).fallbackToDestructiveMigration(false).build()
                 INSTANCE = instance
                 instance
             }
@@ -122,9 +126,6 @@ abstract class StepDatabase : RoomDatabase() {
 
 class StepRepository(private val stepDao: StepDao) {
 
-    /**
-     * Fetch hourly data strictly for the selected date (00:00:00.000 to 23:59:59.999).
-     */
     @OptIn(ExperimentalCoroutinesApi::class)
     fun getHourlyStepsForDate(date: LocalDate): Flow<List<StepDataPoint>> {
         return stepDao.getAllRecentDeltasFlow().map { _ ->
@@ -147,9 +148,6 @@ class StepRepository(private val stepDao: StepDao) {
         }
     }
 
-    /**
-     * Fetch daily data strictly between startDate 00:00:00.000 and endDate 23:59:59.999.
-     */
     @OptIn(ExperimentalCoroutinesApi::class)
     fun getDailyStepsForRange(startDate: LocalDate, endDate: LocalDate): Flow<List<StepDataPoint>> {
         val dateFormatter = DateTimeFormatter.ofPattern("MMM d")

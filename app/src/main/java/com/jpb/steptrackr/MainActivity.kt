@@ -58,8 +58,10 @@ import com.google.android.gms.fitness.data.LocalDataType
 import com.jpb.steptrackr.services.HealthConnectRepository
 import com.jpb.steptrackr.ui.AlternativeDashboardScreen
 import com.jpb.steptrackr.ui.ExpressiveButton
+import com.jpb.steptrackr.ui.RouteMapScreen
 import com.jpb.steptrackr.ui.theme.AppTheme
 import com.jpb.steptrackr.utils.AppLocaleManager
+import com.jpb.steptrackr.utils.AppLocationTracker
 import com.jpb.steptrackr.utils.DashboardLayout
 import com.jpb.steptrackr.utils.GoalNotificationHelper
 import com.jpb.steptrackr.utils.HistoryTimeFrame
@@ -92,6 +94,8 @@ class MainActivity : ComponentActivity(), SensorEventListener {
     private val activityScope = CoroutineScope(Dispatchers.IO)
     private var isActivityPermissionGranted = mutableStateOf(false)
     private var isNotificationPermissionGranted = mutableStateOf(false)
+    private var isLocationPermissionGranted = mutableStateOf(false)
+    private lateinit var locationTracker: AppLocationTracker
 
     private val stepHistoryViewModel: StepHistoryViewModel by viewModels {
         val hcClient = HealthConnectClient.getOrCreate(applicationContext)
@@ -101,7 +105,7 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         )
     }
 
-    enum class Screen { Dashboard, Settings, About, StepHistory }
+    enum class Screen { Dashboard, Settings, About, StepHistory, RouteMap }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -109,6 +113,7 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         database = StepDatabase.getDatabase(applicationContext)
         sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager
         stepSensor = sensorManager?.getDefaultSensor(Sensor.TYPE_STEP_COUNTER)
+        locationTracker = AppLocationTracker(applicationContext)
 
         activityScope.launch {
             val historicalBaseline = database.stepDao().getLastSensorValue()
@@ -139,7 +144,7 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                                 AlternativeDashboardScreen(
                                     currentSteps = todayStepsState ?: 0L,
                                     dailyGoal = goalPrefs.getStepGoal().toInt(),
-                                    onNavigateToMap = { /* Optional map navigation action */ },
+                                    onNavigateToMap = { currentScreen = Screen.RouteMap },
                                     onNavigateToHistory = { currentScreen = Screen.StepHistory },
                                     onMenuClick = { currentScreen = Screen.Settings },
                                     onSettingsClick = { currentScreen = Screen.Settings },
@@ -149,17 +154,23 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                                 PermissionAndDashboardScreen(
                                     hasActivityPermission = isActivityPermissionGranted.value,
                                     hasNotificationPermission = isNotificationPermissionGranted.value,
-                                    onPermissionsUpdated = { activityGranted, notificationGranted ->
+                                    hasLocationPermission = isLocationPermissionGranted.value,
+                                    onPermissionsUpdated = { activityGranted, notificationGranted, locationGranted ->
                                         isActivityPermissionGranted.value = activityGranted
                                         isNotificationPermissionGranted.value = notificationGranted
+                                        isLocationPermissionGranted.value = locationGranted
                                         if (activityGranted) {
                                             registerPedometerAndService()
                                             setupGmsStepRecording(this@MainActivity)
                                         }
+                                        if (locationGranted) {
+                                            locationTracker.startTracking(this@MainActivity)
+                                        }
                                     },
                                     onSyncTrigger = {
                                         triggerImmediateSync(this@MainActivity)
-                                        Toast.makeText(this@MainActivity, getString(R.string.manualsync_text), Toast.LENGTH_SHORT).show()                                    },
+                                        Toast.makeText(this@MainActivity, getString(R.string.manualsync_text), Toast.LENGTH_SHORT).show()
+                                    },
                                     onOpenSettings = { currentScreen = Screen.Settings },
                                     onOpenStepHistory = { currentScreen = Screen.StepHistory }
                                 )
@@ -197,6 +208,11 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                                 }
                             )
                         }
+                        Screen.RouteMap -> {
+                            RouteMapScreen(
+                                onBackClick = { currentScreen = Screen.Dashboard }
+                            )
+                        }
                     }
                 }
             }
@@ -211,6 +227,10 @@ class MainActivity : ComponentActivity(), SensorEventListener {
             registerPedometerAndService()
             setupGmsStepRecording(this)
         }
+
+        if (isLocationPermissionGranted.value) {
+            locationTracker.startTracking(this)
+        }
     }
 
     override fun onPause() {
@@ -219,6 +239,7 @@ class MainActivity : ComponentActivity(), SensorEventListener {
             sensorManager?.unregisterListener(this)
             triggerImmediateSync(this)
         }
+        locationTracker.stopTracking()
     }
 
     private fun updatePermissionStates() {
@@ -230,6 +251,11 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         isNotificationPermissionGranted.value = ContextCompat.checkSelfPermission(
             this,
             Manifest.permission.POST_NOTIFICATIONS
+        ) == PackageManager.PERMISSION_GRANTED
+
+        isLocationPermissionGranted.value = ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.ACCESS_FINE_LOCATION
         ) == PackageManager.PERMISSION_GRANTED
     }
 
@@ -249,15 +275,24 @@ class MainActivity : ComponentActivity(), SensorEventListener {
     }
 
     private fun setupGmsStepRecording(context: Context) {
-        if (GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(context) == ConnectionResult.SUCCESS) {
-            FitnessLocal.getLocalRecordingClient(context)
-                .subscribe(LocalDataType.TYPE_STEP_COUNT_DELTA)
-                .addOnSuccessListener {
-                    Log.d("GMS", "Successfully subscribed to GMS local step recording.")
-                }
-                .addOnFailureListener { e ->
-                    Log.e("GMS", "Failed to subscribe to GMS step recording", e)
-                }
+        val gmsAvailability = GoogleApiAvailability.getInstance()
+        val resultCode = gmsAvailability.isGooglePlayServicesAvailable(context)
+
+        if (resultCode == ConnectionResult.SUCCESS) {
+            try {
+                FitnessLocal.getLocalRecordingClient(context)
+                    .subscribe(LocalDataType.TYPE_STEP_COUNT_DELTA)
+                    .addOnSuccessListener {
+                        Log.d("GMS", "Successfully subscribed to GMS local step recording.")
+                    }
+                    .addOnFailureListener { e ->
+                        Log.e("GMS", "Failed to subscribe to GMS step recording", e)
+                    }
+            } catch (e: Exception) {
+                Log.e("GMS", "Exception initializing GMS recording", e)
+            }
+        } else {
+            Log.i("NonGms", "Google Play Services not available. Using native SensorManager fallback.")
         }
     }
 
@@ -304,15 +339,6 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         val syncWorkRequest = OneTimeWorkRequestBuilder<com.jpb.steptrackr.services.HealthSyncWorker>().build()
         WorkManager.getInstance(context.applicationContext).enqueue(syncWorkRequest)
     }
-
-    override fun attachBaseContext(newBase: Context) {
-        val currentLang = AppLocaleManager.getCurrentLanguage(newBase)
-        val locale = java.util.Locale.forLanguageTag(currentLang)
-        val config = newBase.resources.configuration
-        config.setLocale(locale)
-        val localizedContext = newBase.createConfigurationContext(config)
-        super.attachBaseContext(localizedContext)
-    }
 }
 
 @SuppressLint("LocalContextGetResourceValueCall")
@@ -320,7 +346,8 @@ class MainActivity : ComponentActivity(), SensorEventListener {
 fun PermissionAndDashboardScreen(
     hasActivityPermission: Boolean,
     hasNotificationPermission: Boolean,
-    onPermissionsUpdated: (Boolean, Boolean) -> Unit,
+    hasLocationPermission: Boolean,
+    onPermissionsUpdated: (Boolean, Boolean, Boolean) -> Unit,
     onSyncTrigger: () -> Unit,
     onOpenSettings: () -> Unit,
     onOpenStepHistory: () -> Unit
@@ -343,7 +370,7 @@ fun PermissionAndDashboardScreen(
     var hasTriggeredGoal by remember { mutableStateOf(false) }
 
     LaunchedEffect(todaySteps) {
-        if (todaySteps >= stepGoal && stepGoal > 0 && !hasTriggeredGoal) {
+        if (stepGoal in 1..todaySteps && !hasTriggeredGoal) {
             hasTriggeredGoal = true
             GoalNotificationHelper.showGoalReachedNotification(context, todaySteps)
         }
@@ -368,7 +395,8 @@ fun PermissionAndDashboardScreen(
     ) { permissions ->
         val activityGranted = permissions[Manifest.permission.ACTIVITY_RECOGNITION] == true
         val notificationGranted = permissions[Manifest.permission.POST_NOTIFICATIONS] == true
-        onPermissionsUpdated(activityGranted, notificationGranted)
+        val locationGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true
+        onPermissionsUpdated(activityGranted, notificationGranted, locationGranted)
     }
 
     LaunchedEffect(Unit) {
@@ -392,7 +420,6 @@ fun PermissionAndDashboardScreen(
                 horizontalArrangement = Arrangement.spacedBy(24.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Left Column: Step Gauge
                 Box(
                     modifier = Modifier
                         .weight(1f)
@@ -406,7 +433,6 @@ fun PermissionAndDashboardScreen(
                     )
                 }
 
-                // Right Column: Controls & Information
                 Column(
                     modifier = Modifier
                         .weight(1.2f)
@@ -441,6 +467,7 @@ fun PermissionAndDashboardScreen(
                     PermissionStatusSection(
                         hasActivityPermission = hasActivityPermission,
                         hasNotificationPermission = hasNotificationPermission,
+                        hasLocationPermission = hasLocationPermission,
                         onRequestPermissions = {
                             val channel = NotificationChannel(
                                 "non_gms_activity_tracking_channel",
@@ -453,7 +480,8 @@ fun PermissionAndDashboardScreen(
                             systemPermissionLauncher.launch(
                                 arrayOf(
                                     Manifest.permission.ACTIVITY_RECOGNITION,
-                                    Manifest.permission.POST_NOTIFICATIONS
+                                    Manifest.permission.POST_NOTIFICATIONS,
+                                    Manifest.permission.ACCESS_FINE_LOCATION
                                 )
                             )
                         }
@@ -466,7 +494,6 @@ fun PermissionAndDashboardScreen(
                     .fillMaxSize()
                     .statusBarsPadding()
             ) {
-                // Top Action Bar pinned to the top-right corner
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -488,7 +515,6 @@ fun PermissionAndDashboardScreen(
                     }
                 }
 
-                // Vertically centered scrollable container for dashboard items
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -513,6 +539,7 @@ fun PermissionAndDashboardScreen(
                     PermissionStatusSection(
                         hasActivityPermission = hasActivityPermission,
                         hasNotificationPermission = hasNotificationPermission,
+                        hasLocationPermission = hasLocationPermission,
                         onRequestPermissions = {
                             val channel = NotificationChannel(
                                 "non_gms_activity_tracking_channel",
@@ -525,7 +552,8 @@ fun PermissionAndDashboardScreen(
                             systemPermissionLauncher.launch(
                                 arrayOf(
                                     Manifest.permission.ACTIVITY_RECOGNITION,
-                                    Manifest.permission.POST_NOTIFICATIONS
+                                    Manifest.permission.POST_NOTIFICATIONS,
+                                    Manifest.permission.ACCESS_FINE_LOCATION
                                 )
                             )
                         }
@@ -611,9 +639,10 @@ private fun HealthConnectCard(
 private fun PermissionStatusSection(
     hasActivityPermission: Boolean,
     hasNotificationPermission: Boolean,
+    hasLocationPermission: Boolean,
     onRequestPermissions: () -> Unit
 ) {
-    if (!hasActivityPermission || !hasNotificationPermission) {
+    if (!hasActivityPermission || !hasNotificationPermission || !hasLocationPermission) {
         ExpressiveButton(
             onClick = onRequestPermissions,
             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
